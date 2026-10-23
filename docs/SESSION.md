@@ -149,3 +149,16 @@ inte Codex automatisk granskningsblockering). En dold RunAs-hjälpare i ignorera
 data/allow-local-wifi.ps1 öppnar UAC; resultat i data/wifi-firewall-result.txt.
 Kontrollera resultat innan nätverksåtkomst anses färdig. Byts wifi-IP behöver
 regeln uppdateras. Ingen internetpublicering eller routerändring.
+
+## Återkoppling från telefon: oläst chatt
+
+Användaren har nu testat spelarvyn från telefon och skickat skärmbilder.
+Olästtal syntes för svagt både på Chatt-fliken från Min roll och på annan
+chatt än den öppna. Frontend markerar nu olästa knappar med bärnstensbakgrund,
+tydlig kant och större mörkröd badge med vit text (1 nytt / N nya). Rumsknappar
+har badge på egen rad så långa gruppnamn får plats. Aktiv flik behåller sin
+gröna markering; badge skiljer oläst från aktiv. Ingen blinkning eller
+ny panel. Tillgänglig status anger antal och vilka rum som har oläst.
+Befintlig serverbaserad läsmarkering är oförändrad. Frontendbygge verifieras.
+Telefonens skärmbilder bekräftar fungerande LAN-åtkomst; eventuell historisk
+UAC-status ovan ska inte tolkas som ett aktuellt anslutningshinder.

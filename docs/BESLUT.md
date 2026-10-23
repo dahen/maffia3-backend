@@ -116,3 +116,5 @@ installerade paket ska inte versionshanteras.
 
 - Användaren vill nu testa mobil spelarvy på egen telefon på samma wifi.
 - Lokal LAN-körning beställd; ingen extern publicering.
+- Återkoppling från telefon: olästa meddelanden ska synas tydligt både från
+  Min roll och när spelaren har en annan chatt öppen.
