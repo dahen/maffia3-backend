@@ -100,6 +100,27 @@ morgonunderlag och HTTP/SSE.
 - `HOST`: standard 127.0.0.1. För LAN behöver servern bindas till lämplig adress.
 - `COOKIE_SECURE=true`: för drift bakom HTTPS.
 
-Detta är lokala testkonton och en GM-prototyp. Spelarnas mobilvy och portalen
-för mallar/tilldelning är inte klara. Ingen extern drift eller publicering
+Detta är lokala testkonton och en spelprototyp. Portalen för mallar/tilldelning
+återstår. Mobil spelarvy med nattval, besked och chatt är implementerad. Ingen extern drift eller publicering
 är konfigurerad. Nästa session börjar i `docs/SESSION.md`.
+
+
+## Telefon på samma wifi
+
+Bygg frontend och kör `npm run start:lan` i backendmappen. Vanlig `npm start`
+lyssnar fortsatt bara på datorn själv. LAN-start lyssnar på alla lokala IPv4-
+anslutningar och skriver ut adresser; välj adressen för datorns wifi-adapter
+(`ipconfig`), inte VMware/WSL. Telefonen öppnar `http://<wifi-IPv4>:3047`.
+Ingen separat frontendserver eller CORS-konfiguration behövs.
+
+Logga in som **Alex / 1101** och välj samma parti som GM. I fyrgruppspartiet
+har Alex två förmågor och både personlig GM-chatt och gruppchatt. **Charlie /
+1103** ger ett annat perspektiv. Spelarnas API filtrerar hemliga GM-data.
+Besked publiceras först i Morgon; inkallade spelare hänvisas till GM.
+Gruppchatt är läsbar men stängd för nya spelar-inlägg under Morgon, enligt V1.
+
+Windows-brandväggen behöver tillåta Node, TCP 3047, från LocalSubnet på
+privat wifi. Begränsa gärna regeln även till wifi-adaptern och dess IP.
+Regeln kräver administratörsrättigheter. Byter datorn IP kan en IP-begränsad
+regel behöva uppdateras. Datorn och serverprocessen måste vara igång.
+Gästnät med klientisolering kan hindra kontakt mellan telefon och dator.

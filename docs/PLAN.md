@@ -43,7 +43,8 @@ förslag som inte ska behandlas som nya krav från användaren.
 
 ## Härnäst: färdigställ spelupplevelsen
 
-- Mobil spelarvy: roll, vinstvillkor, aktuella powers, kvittenser och chatt.
+- Mobil spelarvy implementerad: roll, vinstvillkor, powers, kvittenser och chatt.
+  Nästa verifiering: användarens telefon på samma wifi.
 - GM:s "se som spelare" ska använda spelarens serverfiltrerade datavy.
 - Tangentbord: snabbt spara GM-svar och gå vidare till nästa rad.
 - Massmeddelande till alla levande eller endast ej klara.

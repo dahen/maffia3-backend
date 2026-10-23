@@ -1,6 +1,6 @@
 # Återuppta arbetet här
 
-Uppdaterad: 2026-10-22. Läs BESLUT.md för användarkrav och PLAN.md för idéer.
+Uppdaterad: 2026-10-23. Läs BESLUT.md för användarkrav och PLAN.md för idéer.
 FORSTUDIE.md i reporoten beskriver granskningen av V1/V2.
 
 ## Aktuell produkt och återkoppling
@@ -56,7 +56,7 @@ Senaste beställningar är implementerade i källkod:
 - Separat mobil GM-morgonvy: nattens dödsfall, dagens dödsfall före natten,
   ledtrådar, dödsorsak, utförare och full rollinfo. Aldrig tillgänglig för spelare.
 - Djungel/Klassiskt färgtema per parti.
-- Spelarnas mobilvy och förberedelse-/mallportalen återstår avsiktligt.
+- Mobil spelarvy är implementerad. Förberedelse-/mallportalen återstår.
 
 ## Lokal körning
 
@@ -84,7 +84,7 @@ Senaste beställningar är implementerade i källkod:
 ## Senast verifierat
 
 - Backend npm run check: passerar.
-- 16 beteendetester passerar efter fasstatus/Morgon-utbyggnaden. Täcker bland annat
+- 17 beteendetester passerar efter fasstatus/Morgon-utbyggnaden. Täcker bland annat
   gruppisolering, flera förmågor, exakt dödsorsak, dagsutfall, legacy-snapshots,
   hemlig blockering, 25 deltagare/10 dygn, beständighet/grenar, chatt,
   broadcasts/timer och riktig HTTP/SSE samt GM-behörighet.
@@ -108,7 +108,7 @@ Senaste beställningar är implementerade i källkod:
 2. Inga beställda ändringar i den senaste omgången återstår.
 3. Visuell kontroll av Enter-fokus, täthet och mobillayout görs via användarens
    återkoppling tills tillåten browserinspektion finns.
-4. Ta spelarens mobilvy och mallportalen när användaren vill gå vidare.
+4. Följ upp spelarvyn på användarens verkliga telefon; mallportalen återstår.
 
 ## Demokonton
 
@@ -121,3 +121,31 @@ Hela speltillståndet dupliceras per revision. Det är enkelt att återställa o
 är verifierat för ett litet normalparti, men stor chattvolym bör på sikt få
 separat lagring/mer delade snapshots. Läspositioner ligger separat från spelets
 historik. Morgonvyns Genomgånget är lokal, tillfällig UI-markering.
+
+
+## Mobiltest 2026-10-23
+
+Beställt: testa spelarvyn från telefon på samma wifi. Implementerat i
+frontendens PlayerApp: egna rollkort/vinstvillkor, flera förmågor, alla
+valstyper, gruppval med utförare, kvittenser, morgonbesked/inkallning och
+personlig GM-/gruppchatt med olästtal. SSE, återanslutning och återkomst till
+synlig flik hämtar nya data. Utkast behålls mellan liveuppdateringar och
+chattbyten; sparfel behåller text. Chatten använder getRandomValues-UUID
+även över HTTP på LAN, där randomUUID annars kräver en säker kontext.
+
+Backend `npm run start:lan` använder --lan, lyssnar på 0.0.0.0 och visar
+IPv4-adresser. Vanlig start är fortsatt localhost. Egen preview är omstartad
+med --lan, samma databas. HTTP via både loopback och wifi-adress verifierar
+HTML, inloggning och spelarfiltrerat fyrgruppsparti (Alex, två powers/två rum).
+Nytt HTTP-test täcker egna/andras handlingar, nattspärr, hemlig blockering,
+GM-anteckningar, morgonpublicering, inkallning, chattmedlemskap och Origin.
+17 tester samt backend-typkontroll passerar. Frontend bygger.
+1000 UUID:n har kontrollerats för format/unikhet. Verklig telefonlayout och
+wifi från separat enhet behöver användarens test; inga visuella resultat påstås.
+
+Brandväggsregel: Maffia3-LocalWifi-3047, TCP 3047, Node, Private, LocalSubnet,
+Wi-Fi och aktuell wifi-IP. Direkt skapande nekades av Windows (saknade admin,
+inte Codex automatisk granskningsblockering). En dold RunAs-hjälpare i ignorerade
+data/allow-local-wifi.ps1 öppnar UAC; resultat i data/wifi-firewall-result.txt.
+Kontrollera resultat innan nätverksåtkomst anses färdig. Byts wifi-IP behöver
+regeln uppdateras. Ingen internetpublicering eller routerändring.

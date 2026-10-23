@@ -111,3 +111,8 @@ installerade paket ska inte versionshanteras.
 - Lägg till en tredje typ **Morgon** per roll. Texten visas i GM:s morgonvy,
   även för levande spelare. Den är dygnskopplad, börjar tom nästa dygn och
   finns kvar vid läsning av tidigare dygn och vid bakåt/framåt.
+
+## Mobiltest på wifi
+
+- Användaren vill nu testa mobil spelarvy på egen telefon på samma wifi.
+- Lokal LAN-körning beställd; ingen extern publicering.

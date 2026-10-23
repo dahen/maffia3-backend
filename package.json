@@ -1,7 +1,26 @@
 {
-  "name": "maffia3-backend", "version": "0.1.0", "private": true, "type": "module",
-  "engines": { "node": ">=24.12.0" },
-  "scripts": { "dev": "node --watch src/server.ts", "start": "node src/server.ts", "check": "tsc --noEmit", "test": "node --test tests/*.test.ts", "seed": "node src/seed.ts" },
-  "dependencies": { "express": "^5.3.0", "zod": "^4.6.7" },
-  "devDependencies": { "@types/express": "^5.0.0", "@types/node": "^24.12.2", "typescript": "~5.9.3" }
+  "name": "maffia3-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.ts",
+    "start": "node src/server.ts",
+    "check": "tsc --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "seed": "node src/seed.ts",
+    "start:lan": "node src/server.ts --lan"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.12.2",
+    "typescript": "~5.9.3"
+  }
 }

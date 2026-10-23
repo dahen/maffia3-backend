@@ -274,3 +274,30 @@ test('HTTP: login, åtkomst, massimulering och SSE-uppdatering utan omladdning',
     assert.equal((await call(`/games/${f.id}/log`,'GET',undefined,playerCookie)).status,403);assert.equal((await call(`/games/${f.id}/phase`,'POST',{phase:3},playerCookie)).status,403);
   }finally{abort.abort();await reader?.cancel().catch(()=>{});server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));f.store.close();}
 });
+
+test('mobilspelare: egna val, privat data, besked och wifi-Origin via HTTP',async()=>{
+  const f=fixture();const server=createApp(f.store).listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));
+  const base=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
+  let cookie='';
+  async function call(path:string,method='GET',body?:unknown,origin=base){return fetch(base+'/api'+path,{method,headers:{cookie,origin,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});}
+  try{
+    const login=await call('/login','POST',{name:'Charlie',pin:'1103'});assert.equal(login.status,200);cookie=login.headers.get('set-cookie')!.split(';')[0]!;
+    const role=f.state.roles[2]!;const power=role.powers[0]!;const other=f.state.roles[0]!;
+    setPhase(f.store,f.id,f.gm,1);setRoleFlags(f.store,f.id,f.gm,role.id,{blocked:true,notes:'Hemligt föremål',roundNotes:'Hemlig natt',morningNotes:'Hemlig morgon'});setNotes(f.store,f.id,f.gm,'GM-hemlighet');
+    const choice=`/games/${f.id}/roles/${role.id}/powers/${power.id}/action`;
+    assert.equal((await call(choice,'POST',{value:'Ingen'},'http://annan-sida.example')).status,403);
+    assert.equal((await call(choice,'POST',{value:'Ingen'})).status,200,'Hemlig blockering hindrar inte spelarval via HTTP');
+    assert.equal((await call(`/games/${f.id}/roles/${other.id}/powers/${other.powers[0]!.id}/action`,'POST',{value:'Ingen'})).status,403);
+    const personal=f.state.rooms.find(r=>r.kind==='gm'&&r.roleIds.includes(role.id))!;
+    const forbidden=f.state.rooms.find(r=>r.kind==='gm'&&r.roleIds.includes(other.id))!;
+    assert.equal((await call(`/games/${f.id}/rooms/${forbidden.id}/messages`)).status,403);
+    const clientId=randomUUID();assert.equal((await call(`/games/${f.id}/rooms/${personal.id}/messages`,'POST',{body:'Från mobilen',clientId})).status,200);
+    assert.equal(readMessages(f.store,f.id,f.gm,personal.id)[0]!.body,'Från mobilen');
+    setPhase(f.store,f.id,f.gm,2);setResponse(f.store,f.id,f.gm,role.id,power.id,'Privat morgonbesked','Ingen');
+    const dawn=await (await call(`/games/${f.id}?round=999`)).json();assert.equal(dawn.roles.length,1);assert.equal(dawn.roles[0].id,role.id);assert.equal(dawn.roles[0].blocked,false);assert.equal(dawn.roles[0].powers[0].action.response,'');assert.equal(dawn.notes,'');assert.equal(dawn.timeline.length,0);assert.equal(dawn.morning.length,0);
+    for(const secret of ['Hemligt föremål','Hemlig natt','Hemlig morgon','GM-hemlighet','Privat morgonbesked'])assert.ok(!JSON.stringify(dawn).includes(secret));
+    assert.equal((await call(choice,'POST',{value:'Ingen'})).status,409);
+    setPhase(f.store,f.id,f.gm,3);const morning=await (await call(`/games/${f.id}`)).json();assert.equal(morning.roles[0].powers[0].action.response,'Privat morgonbesked');
+    setRoleFlags(f.store,f.id,f.gm,role.id,{summoned:true});const summoned=await (await call(`/games/${f.id}`)).json();assert.equal(summoned.roles[0].summoned,true);assert.equal(summoned.roles[0].powers[0].action.response,'');
+  }finally{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));f.store.close();}
+});
