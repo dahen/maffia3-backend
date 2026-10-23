@@ -165,3 +165,13 @@ ny panel. Tillgänglig status anger antal och vilka rum som har oläst.
 Befintlig serverbaserad läsmarkering är oförändrad. Frontendbygget passerar.
 Telefonens skärmbilder bekräftar fungerande LAN-åtkomst; eventuell historisk
 UAC-status ovan ska inte tolkas som ett aktuellt anslutningshinder.
+
+## Mobilchatt: senaste meddelandet först
+
+Användaren upplever att senaste längst ner kräver för mycket skroll för att
+hänga med. Spelarens chattar visar nu senaste meddelandet överst. Skrivfält
+(två rader) och Skicka ligger före meddelandena, direkt efter chattvalet.
+Ordningen anges med texten Senaste meddelandet först. Automatisk skroll till
+botten är borttagen. Äldre historik läses nedåt. API-ordning och läsmarkering
+använder fortfarande serverns kronologiska lista; bara renderingen vänds med
+en kopia. GM:s befintliga chattlayout är oförändrad. Frontendbygget kontrolleras.

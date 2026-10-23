@@ -121,3 +121,5 @@ installerade paket ska inte versionshanteras.
 
 - Olästmarkeringarna ska behålla tydligheten men följa temats färgskala.
   Användaren ogillar kombinationen rött, gult och grönt i chatten.
+- Mobilchatten ska vara lätt att följa utan att behöva skrolla ner genom
+  historiken för att se senaste meddelandet.
