@@ -154,11 +154,14 @@ regeln uppdateras. Ingen internetpublicering eller routerändring.
 
 Användaren har nu testat spelarvyn från telefon och skickat skärmbilder.
 Olästtal syntes för svagt både på Chatt-fliken från Min roll och på annan
-chatt än den öppna. Frontend markerar nu olästa knappar med bärnstensbakgrund,
-tydlig kant och större mörkröd badge med vit text (1 nytt / N nya). Rumsknappar
+chatt än den öppna. Användaren tyckte förstärkningen syntes tydligt men att rött/gult/grönt
+skar sig. Olästa knappar använder nu temats ljusa accentbakgrund, tydlig
+accentkant och större accentfärgad badge med vit text (1 nytt / N nya).
+I djungeltemat blir det en sammanhållen grönskala; i klassiskt följer det
+temats accent. På aktiv knapp är badge vit med accentfärgad text. Rumsknappar
 har badge på egen rad så långa gruppnamn får plats. Aktiv flik behåller sin
 gröna markering; badge skiljer oläst från aktiv. Ingen blinkning eller
 ny panel. Tillgänglig status anger antal och vilka rum som har oläst.
-Befintlig serverbaserad läsmarkering är oförändrad. Frontendbygge verifieras.
+Befintlig serverbaserad läsmarkering är oförändrad. Frontendbygget passerar.
 Telefonens skärmbilder bekräftar fungerande LAN-åtkomst; eventuell historisk
 UAC-status ovan ska inte tolkas som ett aktuellt anslutningshinder.

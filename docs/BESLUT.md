@@ -118,3 +118,6 @@ installerade paket ska inte versionshanteras.
 - Lokal LAN-körning beställd; ingen extern publicering.
 - Återkoppling från telefon: olästa meddelanden ska synas tydligt både från
   Min roll och när spelaren har en annan chatt öppen.
+
+- Olästmarkeringarna ska behålla tydligheten men följa temats färgskala.
+  Användaren ogillar kombinationen rött, gult och grönt i chatten.
