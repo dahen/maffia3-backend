@@ -5,13 +5,15 @@ import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../src/db.ts';
-import { addUser } from '../src/auth.ts';
+import { addUser, checkPin } from '../src/auth.ts';
 import { demoState, richDemoState, seedRichDemo } from '../src/demo.ts';
-import { createGame, gameView, loadGame, setPhase as guardedSetPhase, PhaseChangeBlocked, setRoleFlags, submitAction, setResponse, enablePower, advanceRound, actionKey, navigate, jumpToRevision, postMessage, readMessages, markRead, recordDeath, setNotes, confirmKill, recordDayOutcome, parseState } from '../src/game.ts';
+import { createGame, gameView, loadGame, setPhase as guardedSetPhase, PhaseChangeBlocked, setRoleFlags, submitAction, setResponse, enablePower, advanceRound, actionKey, navigate, jumpToRevision, postMessage, readMessages, markRead, recordDeath, setNotes, confirmKill, recordDayOutcome, parseState, setLiveGame, liveGameId, listGames } from '../src/game.ts';
 import { broadcast, startCountdown, tickCountdowns } from '../src/broadcast.ts';
 import { gameLog } from '../src/log.ts';
 import { createApp } from '../src/app.ts';
 import type { User } from '../src/contracts.ts';
+import { setupData, saveLibrary, deleteLibrary, savePartyTemplate, createRoster, addRosterPlayer, updatePlayer, prepareGame, changeAssignment, approvePreparation, resetPreparation } from '../src/setup.ts';
+import { seedLibrary } from '../src/setup-seed.ts';
 import { phaseReadiness } from '../src/readiness.ts';
 
 // Existing history/auth scenarios deliberately move past incomplete phases.
@@ -19,7 +21,7 @@ import { phaseReadiness } from '../src/readiness.ts';
 function setPhase(...args:Parameters<typeof guardedSetPhase>){try{return guardedSetPhase(...args);}catch(e){if(!(e instanceof PhaseChangeBlocked))throw e;return guardedSetPhase(args[0],args[1],args[2],args[3],{overrideToken:e.guard.token});}}
 
 function fixture(path=':memory:',size=8) {
-  const store=new Store(path); const gm=addUser(store,'GM','2468',true); const state=demoState(store,size); const id=createGame(store,gm,'Test','test',state);
+  const store=new Store(path); const gm=addUser(store,'GM','2468',true); const state=demoState(store,size); const id=createGame(store,gm,'Test','test',state);setLiveGame(store,gm,id);
   const player=(i:number):User=>({id:state.roles[i]!.userId,name:state.roles[i]!.player,admin:false});
   return {store,gm,state,id,player};
 }
@@ -215,7 +217,7 @@ test('bakåt/framåt bevarar grenar och följer rätt väg efter flera bakåtste
     assert.equal(loadGame(f.store,f.id).revision.id,start);navigate(f.store,f.id,f.gm,'forward',start);navigate(f.store,f.id,f.gm,'forward',night);assert.equal(loadGame(f.store,f.id).revision.id,oldDawn);
     assert.ok(gameView(f.store,f.id,f.gm).timeline.some(t=>t.id===branch));assert.equal(gameLog(f.store,f.id,f.gm).find(e=>e.id===branch)!.activeBranch,false);
     assert.throws(()=>navigate(f.store,f.id,f.player(2),'back',oldDawn));
-    const live=createGame(f.store,f.gm,'Live','live',demoState(f.store,4));assert.throws(()=>jumpToRevision(f.store,live,f.gm,loadGame(f.store,live).revision.id));
+    setLiveGame(f.store,f.gm,null);const live=createGame(f.store,f.gm,'Live','live',demoState(f.store,4));assert.throws(()=>jumpToRevision(f.store,live,f.gm,loadGame(f.store,live).revision.id));
   }finally{f.store.close();}
 });
 
@@ -300,4 +302,120 @@ test('mobilspelare: egna val, privat data, besked och wifi-Origin via HTTP',asyn
     setPhase(f.store,f.id,f.gm,3);const morning=await (await call(`/games/${f.id}`)).json();assert.equal(morning.roles[0].powers[0].action.response,'Privat morgonbesked');
     setRoleFlags(f.store,f.id,f.gm,role.id,{summoned:true});const summoned=await (await call(`/games/${f.id}`)).json();assert.equal(summoned.roles[0].summoned,true);assert.equal(summoned.roles[0].powers[0].action.response,'');
   }finally{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));f.store.close();}
+});
+
+test('Live är en enda markering, behåller testhistorik och begränsar spelarnas partilista',()=>{
+  const f=fixture();try{
+    const second=createGame(f.store,f.gm,'Andra testet','test',demoState(f.store,8));
+    assert.equal(liveGameId(f.store),f.id);assert.deepEqual(listGames(f.store,f.player(0)).map(g=>g.id),[f.id]);
+    setLiveGame(f.store,f.gm,second);assert.equal(listGames(f.store,f.gm).filter(g=>g.isLive).length,1);assert.equal(gameView(f.store,f.id,f.gm).game.isLive,false);assert.equal(gameView(f.store,second,f.gm).game.mode,'test');
+    assert.deepEqual(listGames(f.store,f.player(0)).map(g=>g.id),[second]);assert.throws(()=>setLiveGame(f.store,f.player(0),f.id));
+    assert.throws(()=>setLiveGame(f.store,f.gm,'saknas'));assert.equal(liveGameId(f.store),second);
+    assert.throws(()=>createGame(f.store,f.gm,'Skarpt','live',demoState(f.store,8)));assert.equal(liveGameId(f.store),second);
+    const revision=loadGame(f.store,second).revision.id;navigate(f.store,second,f.gm,'back',revision);assert.equal(liveGameId(f.store),second,'Testhistoria får inte återställa Live-markeringen');
+    setLiveGame(f.store,f.gm,null);assert.equal(listGames(f.store,f.player(0)).length,0);assert.ok(listGames(f.store,f.gm).length>=2);
+    const live=createGame(f.store,f.gm,'Skarpt','live',demoState(f.store,8));assert.equal(liveGameId(f.store),live);
+  }finally{f.store.close();}
+});
+
+test('Live-migrering väljer högst ett äldre skarpt parti och bevarar avmarkering efter omstart',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'maffia-live-'));const path=join(dir,'game.sqlite');const f=fixture(path);
+  try{
+    const second=createGame(f.store,f.gm,'Äldre skarpt parti','test',demoState(f.store,8));
+    f.store.db.exec("UPDATE games SET mode='live'; DROP TABLE live_game;");f.store.close();
+    const migrated=new Store(path);try{const selected=liveGameId(migrated);assert.ok(selected===f.id||selected===second);assert.equal(listGames(migrated,f.gm).filter(g=>g.isLive).length,1);setLiveGame(migrated,f.gm,null);}finally{migrated.close();}
+    const reopened=new Store(path);try{assert.equal(liveGameId(reopened),null);assert.equal(listGames(reopened,f.gm).length,2);assert.equal(listGames(reopened,f.player(0)).length,0);}finally{reopened.close();}
+  }finally{try{f.store.close();}catch{}rmSync(dir,{recursive:true,force:true});}
+});
+
+function setupFixture(){
+  const f=fixture();seedLibrary(f.store);const data=setupData(f.store);const template=data.templates.find(t=>t.players===8&&t.name.includes('fyra'))!;const roster=createRoster(f.store,{name:'Testspelare',mode:'test',count:8});return {...f,template,roster};
+}
+
+test('biblioteket har CRUD, relationer och mallar med exakt antal roller',()=>{
+  const f=fixture();try{
+    const group=saveLibrary(f.store,'groups',{name:'Testgrupp',description:'Beskrivning',chat:true});const win=saveLibrary(f.store,'wins',{name:'Vinn',description:'Överlev'});const power=saveLibrary(f.store,'powers',{name:'Fråga',description:'Fråga GM',type:'Text',gmResponse:true});const role=saveLibrary(f.store,'roles',{name:'Ny roll',summary:'Beskrivning',gmHint:'Hemligt',groupId:group,winId:win,powerIds:[power]});
+    const data=setupData(f.store);assert.deepEqual(data.roles[0]!.powerIds,[power]);assert.equal(data.groups[0]!.chat,true);assert.equal(data.powers[0]!.gmResponse,true);
+    saveLibrary(f.store,'roles',{...data.roles[0],name:'Ändrad roll'},role);assert.equal(setupData(f.store).roles[0]!.name,'Ändrad roll');
+    assert.throws(()=>saveLibrary(f.store,'roles',{...data.roles[0],powerIds:[power,power]},role));assert.deepEqual(setupData(f.store).roles[0]!.powerIds,[power]);
+    assert.throws(()=>savePartyTemplate(f.store,{name:'Fel antal',players:8,theme:'jungle',roleIds:[role,role,role,role]}));
+    const template=savePartyTemplate(f.store,{name:'Fyra roller',players:4,theme:'jungle',roleIds:[role,role,role,role]});assert.equal(setupData(f.store).templates[0]!.roleIds.length,4);
+    assert.throws(()=>deleteLibrary(f.store,'roles',role));assert.throws(()=>deleteLibrary(f.store,'powers',power));assert.throws(()=>deleteLibrary(f.store,'wins',win));assert.throws(()=>deleteLibrary(f.store,'groups',group));
+    f.store.run('DELETE FROM party_templates WHERE id=?',template);deleteLibrary(f.store,'roles',role);deleteLibrary(f.store,'powers',power);deleteLibrary(f.store,'wins',win);deleteLibrary(f.store,'groups',group);assert.equal(setupData(f.store).roles.length,0);
+  }finally{f.store.close();}
+});
+
+test('testspelare får fiktiva namn och slumpade PIN medan skarpa konton kan namnges och återanvändas',()=>{
+  const f=fixture();try{
+    const generated=createRoster(f.store,{name:'Test',mode:'test',count:8});assert.equal(generated.credentials.length,8);assert.equal(new Set(generated.credentials.map(p=>p.id)).size,8);assert.ok(generated.credentials.every(p=>/^\d{6}$/.test(p.pin)));
+    const data=JSON.stringify(setupData(f.store));for(const player of generated.credentials){assert.ok(!data.includes(player.pin));const row=f.store.one<{pin_hash:string}>('SELECT pin_hash FROM users WHERE id=?',player.id)!;assert.ok(checkPin(player.pin,row.pin_hash));assert.notEqual(row.pin_hash,player.pin);}
+    const roster=createRoster(f.store,{name:'Skarpt',mode:'live'});assert.throws(()=>addRosterPlayer(f.store,roster.id,{name:'Riktig person'}));const player=addRosterPlayer(f.store,roster.id,{name:'Riktig person',pin:'5678'});
+    const other=createRoster(f.store,{name:'Nästa kväll',mode:'live'});assert.equal(addRosterPlayer(f.store,other.id,{name:'Riktig person',pin:'9999'}),player);assert.ok(checkPin('5678',f.store.one<{pin_hash:string}>('SELECT pin_hash FROM users WHERE id=?',player)!.pin_hash),'Att återanvända kontot ändrar inte PIN');
+    assert.throws(()=>addRosterPlayer(f.store,roster.id,{name:'GM',pin:'4567'}));updatePlayer(f.store,player,{name:'Nytt namn',pin:'8765'});assert.ok(checkPin('8765',f.store.one<{pin_hash:string}>('SELECT pin_hash FROM users WHERE id=?',player)!.pin_hash));assert.throws(()=>updatePlayer(f.store,f.gm.id,{name:'Intrång',pin:'1111'}));
+  }finally{f.store.close();}
+});
+
+test('rollfördelningen är ett privat utkast, omslumpning och manuellt byte kräver unik fördelning och aktuell revision',()=>{
+  const f=setupFixture();try{
+    const short=createRoster(f.store,{name:'För få',mode:'test',count:4});assert.throws(()=>prepareGame(f.store,{name:'Fel',templateId:f.template.id,rosterId:short.id}));
+    const originalLive=liveGameId(f.store);const key=prepareGame(f.store,{name:'Förberett',templateId:f.template.id,rosterId:f.roster.id});let draft=setupData(f.store).preparations.find(p=>p.id===key)!;
+    assert.equal(draft.gameId,null);assert.equal(liveGameId(f.store),originalLive);assert.ok(draft.state.roles.every(r=>r.alive&&!r.notes));assert.equal(draft.state.rounds[0]!.phase,0);assert.deepEqual(draft.state.messages,[]);assert.equal(new Set(draft.state.roles.map(r=>r.userId)).size,8);
+    const first=draft.state.roles[0]!,second=draft.state.roles[1]!;const assignments=draft.state.roles.map(r=>({roleId:r.id,userId:r.id===first.id?second.userId:r.id===second.id?first.userId:r.userId}));
+    changeAssignment(f.store,key,draft.revision,assignments);assert.throws(()=>changeAssignment(f.store,key,draft.revision));draft=setupData(f.store).preparations.find(p=>p.id===key)!;assert.equal(draft.state.roles[0]!.userId,second.userId);assert.equal(draft.state.roles[1]!.userId,first.userId);
+    assert.throws(()=>changeAssignment(f.store,key,draft.revision,assignments.map(a=>({...a,userId:first.userId}))));assert.throws(()=>changeAssignment(f.store,key,draft.revision,assignments.map(a=>({...a,roleId:first.id}))));
+    changeAssignment(f.store,key,draft.revision);const shuffled=setupData(f.store).preparations.find(p=>p.id===key)!;assert.equal(new Set(shuffled.state.roles.map(r=>r.userId)).size,8);assert.equal(new Set(shuffled.state.roles.map(r=>r.id)).size,8);assert.equal(liveGameId(f.store),originalLive);
+    for(const room of shuffled.state.rooms.filter(r=>r.kind==='gm'))assert.equal(room.name,shuffled.state.roles.find(r=>r.id===room.roleIds[0])!.player);
+  }finally{f.store.close();}
+});
+
+test('godkännande gör ett parti Live, malländringar påverkar inte kopian, nollställning bevarar hela det gamla partiet',()=>{
+  const f=setupFixture();try{
+    const key=prepareGame(f.store,{name:'Runda igen',templateId:f.template.id,rosterId:f.roster.id});let draft=setupData(f.store).preparations.find(p=>p.id===key)!;const snapshot=JSON.stringify(draft.state);
+    const source=setupData(f.store).roles.find(r=>r.id===f.template.roleIds[0])!;saveLibrary(f.store,'roles',{...source,name:'Ny biblioteksroll'},source.id);assert.equal(JSON.stringify(setupData(f.store).preparations.find(p=>p.id===key)!.state),snapshot);
+    assert.throws(()=>approvePreparation(f.store,f.gm,key,draft.revision));const approved=approvePreparation(f.store,f.gm,key,draft.revision,true);assert.equal(liveGameId(f.store),approved.gameId);assert.equal(loadGame(f.store,approved.gameId).state.roles[0]!.name,draft.state.roles[0]!.name);assert.equal(listGames(f.store,f.gm).filter(g=>g.isLive).length,1);
+    draft=setupData(f.store).preparations.find(p=>p.id===key)!;assert.throws(()=>changeAssignment(f.store,key,draft.revision));assert.throws(()=>approvePreparation(f.store,f.gm,key,draft.revision));
+    const role=loadGame(f.store,approved.gameId).state.roles[0]!;setNotes(f.store,approved.gameId,f.gm,'Gammal hemlighet');setRoleFlags(f.store,approved.gameId,f.gm,role.id,{notes:'Föremål'});const oldCount=f.store.one<{n:number}>('SELECT count(*) n FROM revisions WHERE game_id=?',approved.gameId)!.n;
+    resetPreparation(f.store,f.gm,key,draft.revision);assert.equal(liveGameId(f.store),null);assert.equal(loadGame(f.store,approved.gameId).state.roles[0]!.notes,'Föremål');assert.ok(f.store.one<{n:number}>('SELECT count(*) n FROM revisions WHERE game_id=?',approved.gameId)!.n>=oldCount);
+    draft=setupData(f.store).preparations.find(p=>p.id===key)!;assert.equal(draft.gameId,null);const restarted=approvePreparation(f.store,f.gm,key,draft.revision);assert.notEqual(restarted.gameId,approved.gameId);assert.equal(loadGame(f.store,restarted.gameId).state.rounds[0]!.notes,'');assert.equal(loadGame(f.store,restarted.gameId).state.roles[0]!.notes,'');assert.equal(loadGame(f.store,restarted.gameId).state.rounds[0]!.phase,0);
+  }finally{f.store.close();}
+});
+
+test('ändrad spelarlista blockerar godkännande utan att byta Live-parti',()=>{
+  const f=setupFixture();try{
+    const key=prepareGame(f.store,{name:'Utkast',templateId:f.template.id,rosterId:f.roster.id});const draft=setupData(f.store).preparations.find(p=>p.id===key)!;const current=liveGameId(f.store);const player=draft.state.roles[0]!;updatePlayer(f.store,player.userId,{name:'Namn ändrat efter granskning'});assert.throws(()=>approvePreparation(f.store,f.gm,key,draft.revision,true));assert.equal(liveGameId(f.store),current);assert.equal(setupData(f.store).preparations.find(p=>p.id===key)!.gameId,null);
+  }finally{f.store.close();}
+});
+
+test('HTTP: hela förberedelseflödet är GM-skyddat och spelare ser roller först efter godkännande',async()=>{
+  const f=fixture();seedLibrary(f.store);const server=createApp(f.store).listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));const base=`http://127.0.0.1:${(server.address() as {port:number}).port}`;const abort=new AbortController();let reader:ReadableStreamDefaultReader<Uint8Array>|undefined;
+  async function call(path:string,cookie='',method='GET',body?:unknown){return fetch(base+'/api'+path,{method,headers:{cookie,...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});}
+  async function login(name:string,pin:string){const res=await call('/login','','POST',{name,pin});assert.equal(res.status,200);return res.headers.get('set-cookie')!.split(';')[0]!;}
+  try{
+    assert.equal((await call('/setup')).status,401);const gmCookie=await login('GM','2468');const oldPlayer=await login('Alex','1101');assert.equal((await call('/setup',oldPlayer)).status,403);assert.equal((await call('/setup/library/roles',oldPlayer,'POST',{})).status,403);
+    const group=await call('/setup/library/groups',gmCookie,'POST',{name:'HTTP-grupp',chat:true});assert.equal(group.status,201);const groupId=(await group.json()).id;assert.equal((await call('/setup/library/groups/'+groupId,gmCookie,'PUT',{name:'Ändrad grupp',chat:false})).status,200);assert.equal((await call('/setup/library/groups/'+groupId,gmCookie,'DELETE')).status,200);
+    const library=await(await call('/setup',gmCookie)).json();assert.ok(library.roles.length>=25);assert.ok(!JSON.stringify(library).includes('pin_hash'));
+    const templateResponse=await call('/setup/templates',gmCookie,'POST',{name:'Fyra HTTP-roller',players:4,theme:'jungle',roleIds:library.roles.slice(0,4).map((r:{id:string})=>r.id)});assert.equal(templateResponse.status,201);const templateId=(await templateResponse.json()).id;
+    const rosterResponse=await call('/setup/rosters',gmCookie,'POST',{name:'Fyra HTTP-spelare',mode:'test',count:4});assert.equal(rosterResponse.status,201);const rosterResult=await rosterResponse.json();const person=rosterResult.credentials[0];let playerCookie=await login(person.name,person.pin);assert.deepEqual(await(await call('/games',playerCookie)).json(),[]);
+    const preparation=await call('/setup/preparations',gmCookie,'POST',{name:'HTTP-start',templateId,rosterId:rosterResult.id});assert.equal(preparation.status,201);const preparationId=(await preparation.json()).id;let draft=setupData(f.store).preparations.find(p=>p.id===preparationId)!;
+    assert.equal((await call('/setup/preparations/'+preparationId+'/approve',playerCookie,'POST',{revision:draft.revision,replaceLive:true})).status,403);assert.deepEqual(await(await call('/games',playerCookie)).json(),[]);assert.equal((await call('/games/'+f.id+'/live',gmCookie,'PUT',{enabled:true})).status,409,'Gamla API:t får inte kringgå granskning');assert.equal((await call('/games',gmCookie,'POST',{name:'Kringgå',size:4,mode:'live'})).status,400);
+    const stream=await fetch(base+'/api/events',{headers:{cookie:playerCookie},signal:abort.signal});reader=stream.body!.getReader();await reader.read();
+    assert.equal((await call('/setup/preparations/'+preparationId+'/approve',gmCookie,'POST',{revision:draft.revision})).status,409);
+    assert.equal((await call('/setup/preparations/'+preparationId+'/shuffle',gmCookie,'POST',{revision:draft.revision})).status,200);assert.equal((await call('/setup/preparations/'+preparationId+'/approve',gmCookie,'POST',{revision:draft.revision,replaceLive:true})).status,409);draft=setupData(f.store).preparations.find(p=>p.id===preparationId)!;
+    const approval=await call('/setup/preparations/'+preparationId+'/approve',gmCookie,'POST',{revision:draft.revision,replaceLive:true});assert.equal(approval.status,200);const gameId=(await approval.json()).gameId;
+    const notice=await Promise.race([reader.read(),new Promise<never>((_,reject)=>{const timer=setTimeout(()=>reject(Error('Saknar Live-notis')),3000);timer.unref();})]);assert.match(new TextDecoder().decode(notice.value),/event: catalog/);
+    assert.deepEqual((await(await call('/games',playerCookie)).json()).map((g:{id:string})=>g.id),[gameId]);const view=await(await call('/games/'+gameId,playerCookie)).json();assert.equal(view.roles.length,1);assert.equal(view.roles[0].userId,person.id);assert.equal(view.game.phase,0);
+    assert.equal((await call('/games/'+f.id,playerCookie)).status,403);assert.equal((await call('/games/'+f.id+'/events',playerCookie)).status,403);assert.equal((await call('/setup',playerCookie)).status,403);
+    const personalRoom=view.rooms.find((r:{kind:string})=>r.kind==='gm');assert.equal((await call(`/games/${gameId}/rooms/${personalRoom.id}/messages`,playerCookie,'POST',{body:'Hej från nya kontot',clientId:randomUUID()})).status,200);
+    assert.equal((await call('/setup/players/'+person.id,gmCookie,'PUT',{name:person.name,pin:'1234567'})).status,200);assert.equal((await(await call('/session',playerCookie)).json()).user,null);playerCookie=await login(person.name,'1234567');
+    draft=setupData(f.store).preparations.find(p=>p.id===preparationId)!;assert.equal((await call('/setup/preparations/'+preparationId+'/reset',gmCookie,'POST',{revision:draft.revision})).status,200);assert.deepEqual(await(await call('/games',playerCookie)).json(),[]);assert.equal(readMessages(f.store,gameId,f.gm,personalRoom.id)[0]!.body,'Hej från nya kontot');assert.equal((await call('/games/'+gameId,gmCookie)).status,200);
+  }finally{abort.abort();await reader?.cancel().catch(()=>{});server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));f.store.close();}
+});
+
+test('skarpt förberett parti kräver namngivna konton och godkännande och tillåter inte testnavigering',()=>{
+  const f=fixture();seedLibrary(f.store);try{
+    const data=setupData(f.store);const template=savePartyTemplate(f.store,{name:'Fyra skarpa roller',players:4,theme:'classic',roleIds:data.roles.slice(0,4).map(role=>role.id)});const roster=createRoster(f.store,{name:'Riktiga deltagare',mode:'live'});
+    for(const name of ['Ada Andersson','Bertil Berg','Cecilia Carlsson','David Dahl'])addRosterPlayer(f.store,roster.id,{name,pin:'5678'});
+    const preparation=prepareGame(f.store,{name:'Skarpa kvällen',templateId:template,rosterId:roster.id});const draft=setupData(f.store).preparations.find(p=>p.id===preparation)!;assert.equal(draft.gameId,null);assert.equal(draft.mode,'live');assert.equal(liveGameId(f.store),f.id);
+    const result=approvePreparation(f.store,f.gm,preparation,draft.revision,true);const view=gameView(f.store,result.gameId,f.gm);assert.equal(view.game.mode,'live');assert.equal(view.game.isLive,true);assert.equal(view.game.theme,'classic');assert.equal(view.canUndo,false);assert.deepEqual(new Set(view.roles.map(role=>role.player)),new Set(['Ada Andersson','Bertil Berg','Cecilia Carlsson','David Dahl']));assert.throws(()=>navigate(f.store,result.gameId,f.gm,'back',view.revision));
+  }finally{f.store.close();}
 });
