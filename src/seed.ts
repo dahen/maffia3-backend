@@ -1,3 +1,4 @@
 import { Store } from './db.ts';
 import { seedDemo, seedRichDemo } from './demo.ts';
-const store = new Store(); seedDemo(store); seedRichDemo(store); store.close(); console.log('Demodata klar, inklusive 4 grupper och flera förmågor. GM: 2468. Befintliga partier lämnas orörda.');
+import { seedLibrary } from './setup-seed.ts';
+const store = new Store(); seedDemo(store); seedRichDemo(store); seedLibrary(store); store.close(); console.log('Demodata, rollbibliotek och partimallar klara. GM: 2468. Befintliga partier lämnas orörda.');

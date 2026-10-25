@@ -19,6 +19,19 @@ export class Store {
       CREATE TABLE IF NOT EXISTS navigation_choices (game_id TEXT NOT NULL REFERENCES games(id), parent_id INTEGER NOT NULL REFERENCES revisions(id), child_id INTEGER NOT NULL REFERENCES revisions(id), PRIMARY KEY(game_id,parent_id));
       CREATE TABLE IF NOT EXISTS room_reads (user_id TEXT NOT NULL REFERENCES users(id), game_id TEXT NOT NULL REFERENCES games(id), room_id TEXT NOT NULL, message_id TEXT NOT NULL, PRIMARY KEY(user_id,game_id,room_id));
       INSERT OR IGNORE INTO schema_migrations(version) VALUES(1);
+      CREATE TABLE IF NOT EXISTS live_game (singleton INTEGER PRIMARY KEY CHECK(singleton=1), game_id TEXT REFERENCES games(id));
+      INSERT OR IGNORE INTO live_game(singleton,game_id) SELECT 1,id FROM games WHERE mode='live' ORDER BY created_at DESC,id LIMIT 1;
+      CREATE TABLE IF NOT EXISTS library_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, chat INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS library_wins (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS library_powers (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, type TEXT NOT NULL, conditional INTEGER NOT NULL, gm_response INTEGER NOT NULL, shared INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS library_roles (id TEXT PRIMARY KEY, name TEXT NOT NULL, summary TEXT NOT NULL, gm_hint TEXT NOT NULL, group_id TEXT REFERENCES library_groups(id), win_id TEXT REFERENCES library_wins(id));
+      CREATE TABLE IF NOT EXISTS library_role_powers (role_id TEXT NOT NULL REFERENCES library_roles(id) ON DELETE CASCADE, power_id TEXT NOT NULL REFERENCES library_powers(id), position INTEGER NOT NULL, PRIMARY KEY(role_id,power_id));
+      CREATE TABLE IF NOT EXISTS party_templates (id TEXT PRIMARY KEY, name TEXT NOT NULL, players INTEGER NOT NULL CHECK(players BETWEEN 4 AND 25), theme TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS party_template_roles (template_id TEXT NOT NULL REFERENCES party_templates(id) ON DELETE CASCADE, position INTEGER NOT NULL, role_id TEXT NOT NULL REFERENCES library_roles(id), PRIMARY KEY(template_id,position));
+      CREATE TABLE IF NOT EXISTS player_rosters (id TEXT PRIMARY KEY, name TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('test','live')));
+      CREATE TABLE IF NOT EXISTS roster_players (roster_id TEXT NOT NULL REFERENCES player_rosters(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id), PRIMARY KEY(roster_id,user_id));
+      CREATE TABLE IF NOT EXISTS game_preparations (id TEXT PRIMARY KEY, name TEXT NOT NULL, mode TEXT NOT NULL, template_id TEXT NOT NULL REFERENCES party_templates(id), roster_id TEXT NOT NULL REFERENCES player_rosters(id), state_json TEXT NOT NULL CHECK(json_valid(state_json)), revision INTEGER NOT NULL DEFAULT 1, game_id TEXT REFERENCES games(id), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+      INSERT OR IGNORE INTO schema_migrations(version) VALUES(2);
     `);
   }
   all<T>(sql: string, ...args: SQLInputValue[]): T[] { return this.db.prepare(sql).all(...args) as unknown as T[]; }

@@ -15,7 +15,7 @@ export interface Room { id: string; name: string; kind: 'gm' | 'group'; roleIds:
 export interface Message { id: string; roomId: string; senderId: string; senderName: string; admin: boolean; body: string; round: number; time: string }
 export type Theme = 'jungle' | 'classic';
 export interface GameState { theme: Theme; roles: Role[]; rounds: Round[]; rooms: Room[]; messages: Message[] }
-export interface GameSummary { id: string; name: string; mode: 'test' | 'live'; theme: Theme; players: number; round: number; phase: Phase }
+export interface GameSummary { id: string; name: string; mode: 'test' | 'live'; isLive: boolean; theme: Theme; players: number; round: number; phase: Phase }
 export interface PowerView extends Power { enabled: boolean; action: Action | null }
 export interface RoleView extends Omit<Role, 'powers'> { powers: PowerView[]; blocked: boolean; summoned: boolean; roundNotes: string; morningNotes: string; finished: boolean; gmFinished: boolean }
 export interface RoomView extends Room { unread: number; latest: string | null; count: number }

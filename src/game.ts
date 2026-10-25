@@ -37,10 +37,22 @@ export function loadGame(store: Store, id: string) {
   return { game, revision, state };
 }
 function authorize(user: User, state: GameState) { if (!user.admin && !state.roles.some(r => r.userId === user.id)) throw new Problem(403, 'Du deltar inte i partiet.'); }
-function summary(game: GameRow, state: GameState): GameSummary { const r = latestRound(state); return { id: game.id, name: game.name, mode: game.mode, theme: state.theme, players: state.roles.length, round: r.number, phase: r.phase }; }
+export function liveGameId(store: Store): string | null { return store.one<{game_id:string|null}>('SELECT game_id FROM live_game WHERE singleton=1')?.game_id ?? null; }
+export function setLiveGame(store: Store, user: User, id: string | null) {
+  gm(user); return store.transaction(() => {
+    if(id)loadGame(store,id);
+    const previous=liveGameId(store);
+    store.run('INSERT INTO live_game(singleton,game_id) VALUES(1,?) ON CONFLICT(singleton) DO UPDATE SET game_id=excluded.game_id',id);
+    if(previous&&previous!==id){mutate(store,previous,user,'Partiet är inte längre Live',()=>{});store.run('UPDATE games SET automation_paused=1 WHERE id=?',previous);}
+    if(id&&previous!==id)mutate(store,id,user,'GM markerade partiet som Live för spelarna',()=>{});
+    return previous;
+  });
+}
+function summary(store: Store, game: GameRow, state: GameState): GameSummary { const r = latestRound(state); return { id: game.id, name: game.name, mode: game.mode, isLive: liveGameId(store)===game.id, theme: state.theme, players: state.roles.length, round: r.number, phase: r.phase }; }
 export function listGames(store: Store, user: User): GameSummary[] {
   return store.all<GameRow>('SELECT * FROM games ORDER BY created_at DESC,id').flatMap(game => {
-    const { state } = loadGame(store, game.id); return user.admin || state.roles.some(r => r.userId === user.id) ? [summary(game, state)] : [];
+    if(!user.admin&&game.id!==liveGameId(store))return [];
+    const { state } = loadGame(store, game.id); return user.admin || state.roles.some(r => r.userId === user.id) ? [summary(store, game, state)] : [];
   });
 }
 export function appendRevision(store: Store, gameId: string, parent: number | null, user: User, state: GameState, label: string) {
@@ -53,7 +65,7 @@ export function appendRevision(store: Store, gameId: string, parent: number | nu
 }
 export function createGame(store: Store, user: User, name: string, mode: 'test' | 'live', state: GameState) {
   if (!user.admin) throw new Problem(403, 'Endast GM kan skapa partier.');
-  return store.transaction(() => { const id = randomUUID(); store.run('INSERT INTO games(id,name,mode) VALUES(?,?,?)', id, name, mode); appendRevision(store, id, null, user, state, 'Partiet skapades'); return id; });
+  return store.transaction(() => { if(mode==='live'&&liveGameId(store))throw new Problem(409,'Ett parti är redan Live. Avmarkera det först eller skapa ett testparti.'); const id = randomUUID(); store.run('INSERT INTO games(id,name,mode) VALUES(?,?,?)', id, name, mode); appendRevision(store, id, null, user, state, 'Partiet skapades'); if(mode==='live')setLiveGame(store,user,id); return id; });
 }
 export function mutate(store: Store, id: string, user: User, label: string, update: (state: GameState) => void) {
   return store.transaction(() => { const { game, state } = loadGame(store, id); authorize(user, state); update(state); return appendRevision(store, id, game.current_revision, user, state, label); });
@@ -249,5 +261,5 @@ export function gameView(store: Store, id: string, user: User, roundNumber?: num
     return { ...room, roleIds: user.admin ? room.roleIds : [], count: messages.length, latest: messages.at(-1)?.body ?? null, unread: messages.slice(readIndex + 1).filter(m => m.senderId !== user.id).length };
   });
   const timeline: TimelineEntry[] = user.admin ? store.all<RevisionRow>('SELECT id,parent_id,label,round,phase,created_at FROM revisions WHERE game_id=? ORDER BY id', id).map(r => ({ id: r.id, parentId: r.parent_id, label: r.label, round: r.round, phase: r.phase, time: r.created_at, current: r.id === revision.id })) : [];
-  return { game: summary(game, state), revision: revision.id, viewedRound: round.number, viewedPhase: round.phase, dayOutcome: user.admin ? round.dayOutcome : 'pending', morning: user.admin ? round.deaths.map(d => ({...d, player: state.roles.find(r => r.id === d.roleId)?.player ?? ''})) : [], countdown: round.countdown ? { deadline: round.countdown.deadline, paused: Boolean(game.automation_paused) } : null, roundNumbers: user.admin ? state.rounds.map(r => r.number) : [current.number], notes: user.admin ? round.notes : '', roles, rooms, targets: state.roles.map(r => ({ id: r.id, name: r.player, alive: r.alive })), timeline, canUndo: user.admin && game.mode === 'test' && revision.parent_id !== null, canRedo: user.admin && game.mode === 'test' && Boolean(store.one('SELECT id FROM revisions WHERE game_id=? AND parent_id=? LIMIT 1', id, revision.id)) };
+  return { game: summary(store, game, state), revision: revision.id, viewedRound: round.number, viewedPhase: round.phase, dayOutcome: user.admin ? round.dayOutcome : 'pending', morning: user.admin ? round.deaths.map(d => ({...d, player: state.roles.find(r => r.id === d.roleId)?.player ?? ''})) : [], countdown: round.countdown ? { deadline: round.countdown.deadline, paused: Boolean(game.automation_paused) } : null, roundNumbers: user.admin ? state.rounds.map(r => r.number) : [current.number], notes: user.admin ? round.notes : '', roles, rooms, targets: state.roles.map(r => ({ id: r.id, name: r.player, alive: r.alive })), timeline, canUndo: user.admin && game.mode === 'test' && revision.parent_id !== null, canRedo: user.admin && game.mode === 'test' && Boolean(store.one('SELECT id FROM revisions WHERE game_id=? AND parent_id=? LIMIT 1', id, revision.id)) };
 }

@@ -12,6 +12,7 @@ import * as game from './game.ts';
 import { demoState } from './demo.ts';
 import { broadcast, startCountdown, stopCountdown, tickCountdowns } from './broadcast.ts';
 import { gameLog } from './log.ts';
+import { setupRouter } from './setup.ts';
 function path(req: Request, key = 'id') { return z.string().min(1).parse(req.params[key]); }
 
 export function createApp(store: Store) {
@@ -42,9 +43,18 @@ export function createApp(store: Store) {
   const user = (res: Response) => res.locals.user as User;
   app.get('/api/games', (_req, res) => res.json(game.listGames(store, user(res))));
   app.post('/api/games', requireGm, (req, res) => {
-    const input = z.object({ name: z.string().trim().min(1).max(100), size: z.number().int().min(4).max(25), mode: z.enum(['test','live']).default('test'), theme: z.enum(['jungle','classic']).default('jungle') }).parse(req.body);
-    const id = game.createGame(store, user(res), input.name, input.mode, demoState(store, input.size, input.theme)); res.status(201).json({ id });
+    const input = z.object({ name: z.string().trim().min(1).max(100), size: z.number().int().min(4).max(25), mode: z.literal('test').default('test'), theme: z.enum(['jungle','classic']).default('jungle') }).parse(req.body);
+    const id = game.createGame(store, user(res), input.name, input.mode, demoState(store, input.size, input.theme)); events.emit('catalog'); res.status(201).json({ id });
   });
+  app.use('/api/setup',requireGm,setupRouter(store,(ids=[])=>{events.emit('catalog');for(const gameId of ids)events.emit(gameId);}));
+  app.get('/api/events',(req,res)=>{
+    res.setHeader('Content-Type','text/event-stream');res.setHeader('Connection','keep-alive');res.setHeader('X-Accel-Buffering','no');res.flushHeaders();
+    const notify=()=>res.write('event: catalog\ndata: {}\n\n');
+    const timer=setInterval(()=>{if(!getUser(store,req)){res.write('event: expired\ndata: {}\n\n');res.end();}else res.write(': heartbeat\n\n');},15000);
+    events.on('catalog',notify);res.on('close',()=>{clearInterval(timer);events.off('catalog',notify);});notify();
+  });
+  app.put('/api/games/:id/live',requireGm,(req,res)=>{const {enabled}=z.object({enabled:z.boolean()}).parse(req.body);const id=path(req);if(enabled&&!store.one('SELECT id FROM game_preparations WHERE game_id=?',id))throw new Problem(409,'Godkänn rollfördelningen under Starta parti först.');if(!enabled&&game.liveGameId(store)!==id)throw new Problem(409,'Det här partiet är inte Live.');const previous=game.setLiveGame(store,user(res),enabled?id:null);events.emit('catalog');if(previous)events.emit(previous);changed(res,id,null);});
+  app.use('/api/games/:id',(req,res,next)=>{if(!user(res).admin&&game.liveGameId(store)!==path(req))return next(new Problem(403,'Det här partiet är inte Live.'));next();});
   app.get('/api/games/:id', (req, res) => {
     const round = req.query.round ? z.coerce.number().int().positive().parse(req.query.round) : undefined;
     res.json(game.gameView(store, path(req), user(res), round));
