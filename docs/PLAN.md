@@ -72,17 +72,29 @@ och simulering av spelarchatt ingår redan i den pågående leveransen.
 - Framtida idé: en sammanhängande slutberättelse, utskriftsvy och mer polerade
   berättarkort. Inga automatiskt fabricerade spelhändelser.
 
-## Senare: förberedelseportal
+## Förberedelseportal: fyra must-have-sidor
 
-- Bibliotek för powers, vinstvillkor och roller, separat från speldatan.
-- Scenariomallar och alternativa rollkombinationer per spelarantal.
-- Överblick: antal roller, grupptillhörighet, förmågor och balansanteckningar.
-- Deltagarlista när folk anländer; välj matchande mall och slumpa tilldelning.
-- Förhandsgranska innan roller publiceras till spelarna.
-- Skapa spelinstanser med kopior/versionerade definitioner: mallredigering
-  får inte i efterhand ändra ett startat parti.
-- Importera utvalda V2-scenarier utan historiska personnamn/anteckningar/status.
+Implementerat:
+
+- Rollbibliotek med CRUD för roller, powers, wins och grupper. Roller kopplas
+  till grupp, vinstvillkor och en eller flera förmågor.
+- Partimallar: namn, tema, spelarantal och lika många rollplatser. Samma
+  rolldefinition kan förekomma på flera platser. FK skyddar använda poster.
+- Spelare: separata test-/skarpa listor. Testgenerering med slumpade PIN,
+  namngivna konton, återanvändning, ändra namn/PIN, ta bort ur lista.
+- Starta parti: antal valideras, fristående fördelningsutkast skapas, roller
+  slumpas/flyttas manuellt, explicit godkännande gör partiet Live.
+- Nollställning av förberedelse avpublicerar dess Live-parti men bevarar
+  det gamla partiets hela historik. Nytt godkännande skapar en ny spelinstans.
+- Ett Live-parti, ingen partiväljare för spelare; globala SSE-notiser vid byte.
+- Exempelbibliotek: 33 roller, 17 powers, 4 wins, 4 grupper och tre mallar.
+
+Nice to have / idébank:
+
+- Spara och läsa in ett helt speltillstånd för test, separat från mallflödet.
+- Importera utvalda V2-definitioner utan personnamn, anteckningar eller status.
 - Porträtt/kamera/namnlista från V1 vid behov.
+- Balansanteckningar och mer avancerad jämförelse mellan rollkombinationer.
 
 ## Teknisk riktning (agentens val, kan omprövas)
 

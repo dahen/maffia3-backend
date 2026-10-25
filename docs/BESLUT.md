@@ -123,3 +123,32 @@ installerade paket ska inte versionshanteras.
   Användaren ogillar kombinationen rött, gult och grönt i chatten.
 - Mobilchatten ska vara lätt att följa utan att behöva skrolla ner genom
   historiken för att se senaste meddelandet.
+
+## Ett Live-parti och återanvändbara rolluppsättningar
+
+- Spelarens telefon ska sakna partiväljare och automatiskt visa Live-partiet.
+- Endast ett pågående parti får vara markerat Live.
+- MUST HAVE: GM väljer/laddar olika rolluppsättningar som passar faktiskt antal spelare.
+- NICE TO HAVE: flera samtidiga testpartier som GM kan växla mellan.
+- Live-markeringen styr vilket parti spelarna ser. Testläge behåller sin
+  bakåt-/framåtfunktion även när testpartiet visas för telefonerna.
+
+
+## Förtydligande: fyra GM-sidor (ersätter tidigare tolkning av mallflödet)
+
+Ingen funktion för att spara roller/mallar från Spelöversikten. MUST HAVE:
+
+1. **Rollbibliotek:** översikt över databasens roller, powers, wins och övriga
+   definitioner, CRUD på allt samt koppling av roller till vinstvillkor,
+   förmågor och grupper.
+2. **Partimallar:** ange spelarantal, välj exakt lika många roller och spara.
+3. **Spelare:** testläge genererar X fiktiva namn och slumpade PIN-koder.
+   Skarpt läge använder namngivna riktiga konton, med möjlighet att sätta PIN.
+4. **Starta parti:** välj mall och spelarlista, kontrollera samma antal roller
+   och spelare. Slumpa fördelningen, låt GM granska och flytta roller manuellt.
+   Partiet blir Live först när GM godkänner rollfördelningen. Stöd för att
+   nollställa/börja om och för omslumpning.
+
+NICE TO HAVE: spara/läsa in hela speltillstånd från Spelöversikten för tester.
+Det är inte ett sätt att skapa rolldefinitioner eller partimallar. Befintlig
+JSON-export finns; återinläsning är ännu inte implementerad.

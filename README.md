@@ -100,8 +100,8 @@ morgonunderlag och HTTP/SSE.
 - `HOST`: standard 127.0.0.1. För LAN behöver servern bindas till lämplig adress.
 - `COOKIE_SECURE=true`: för drift bakom HTTPS.
 
-Detta är lokala testkonton och en spelprototyp. Portalen för mallar/tilldelning
-återstår. Mobil spelarvy med nattval, besked och chatt är implementerad. Ingen extern drift eller publicering
+Detta är en spelprototyp med GM-spelöversikt, fyra förberedelsesidor och
+mobil spelarvy med nattval, besked och chatt. Ingen extern drift eller publicering
 är konfigurerad. Nästa session börjar i `docs/SESSION.md`.
 
 
@@ -113,14 +113,46 @@ anslutningar och skriver ut adresser; välj adressen för datorns wifi-adapter
 (`ipconfig`), inte VMware/WSL. Telefonen öppnar `http://<wifi-IPv4>:3047`.
 Ingen separat frontendserver eller CORS-konfiguration behövs.
 
-Logga in som **Alex / 1101** och välj samma parti som GM. I fyrgruppspartiet
-har Alex två förmågor och både personlig GM-chatt och gruppchatt. **Charlie /
-1103** ger ett annat perspektiv. Spelarnas API filtrerar hemliga GM-data.
-Besked publiceras först i Morgon; inkallade spelare hänvisas till GM.
-Gruppchatt är läsbar men stängd för nya spelar-inlägg under Morgon, enligt V1.
+Logga in på telefonen med ett konto/PIN från den spelarlista GM skapat.
+Telefonen saknar partiväljare och får sitt parti automatiskt när GM godkänt
+rollfördelningen. Före godkännande väntar spelaren på spelledningen.
+Spelarnas API filtrerar hemliga GM-data och nekar andra partier. Besked
+publiceras först i Morgon; inkallade spelare hänvisas till GM. Gruppchatten
+är läsbar men stängd för nya spelar-inlägg under Morgon, enligt V1.
 
 Windows-brandväggen behöver tillåta Node, TCP 3047, från LocalSubnet på
 privat wifi. Begränsa gärna regeln även till wifi-adaptern och dess IP.
 Regeln kräver administratörsrättigheter. Byter datorn IP kan en IP-begränsad
 regel behöva uppdateras. Datorn och serverprocessen måste vara igång.
 Gästnät med klientisolering kan hindra kontakt mellan telefon och dator.
+
+
+## Förbered och starta ett nytt parti
+
+1. **Rollbibliotek:** skapa/redigera/radera roller, powers, wins och grupper.
+   Koppla varje roll till vinstvillkor, grupp och förmågor. En grupp kan ha
+   chatt. En power kan ha gemensamt val för alla roller med samma förmåga.
+2. **Partimallar:** ange namn, tema och antal spelare. Välj exakt lika många
+   rollplatser ur biblioteket. Samma rolldefinition kan användas flera gånger.
+3. **Spelare:** skapa en testlista och generera X fiktiva konton med slumpade
+   PIN, eller skapa en skarp lista med riktiga namn och egna PIN-koder.
+   Konton kan återanvändas; namn/PIN kan ändras. PIN lagras hashad.
+4. **Starta parti:** välj partimall och spelarlista med lika stort antal.
+   Förbered en slumpad fördelning, granska och byt roller via dropdowns eller
+   slumpa om. Först **Godkänn rollfördelning och starta Live** visar rollerna
+   för spelarna. Ett befintligt Live-parti kräver uttrycklig ersättningsbekräftelse.
+
+Rollbibliotek och partimallar är separata från pågående speltillstånd. Det finns
+ingen spara-mall-knapp i Spelöversikten. Startade partier har egna kopior.
+`npm run seed` lägger till 33 exempelroller och tre mallar (8/8 med fyra grupper/25).
+
+**Nollställ** under Starta parti går tillbaka till ett privat utkast och stoppar
+Live-visningen för berört parti. Nästa godkännande startar om från dygn 1 med
+en ny spelinstans. Det gamla partiets fullständiga historik bevaras.
+
+Högst ett parti är Live. Test/skarpt-läge är separat från Live-markeringen;
+testpartier behåller historiknavigering även när telefoner deltar. GM kan
+växla mellan sina partier utan att påverka vilket som är Live.
+
+Att spara/läsa in hela speltillstånd för tester är nice-to-have.
+JSON-export finns; återinläsning är ännu inte implementerad.

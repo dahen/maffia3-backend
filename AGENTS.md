@@ -14,3 +14,14 @@ hindra spelarens inlämning. Hemlig information ska filtreras på servern.
 
 Gamla referensprojekt i ../../1 nodesis + cangro maffia och
 ../../2 hermes maffia ska lämnas orörda. Ingen publicering/deploy är beställd.
+
+Telefoner visar endast det enda Live-markerade partiet, utan partiväljare.
+Val av återanvändbara rolluppsättningar per spelarantal är nu must have;
+flera samtidiga GM-testpartier är nice to have. Live-markering och testläge
+är separata, så mobiltest behöver inte förlora historiknavigering.
+
+Mallflödet är nu preciserat: fyra separata GM-sidor för bibliotek-CRUD,
+partimallar, test-/skarpa spelarlistor och start/godkännande av rollfördelning.
+Ingen spara-roller-/spara-mall-knapp från Spelöversikten. Endast godkänd
+rollfördelning blir Live. Nollställning bevarar föregående partis historik.
+Spara/läsa in HELA speltillstånd är endast nice-to-have; import återstår.

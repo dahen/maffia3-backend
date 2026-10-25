@@ -56,7 +56,7 @@ Senaste beställningar är implementerade i källkod:
 - Separat mobil GM-morgonvy: nattens dödsfall, dagens dödsfall före natten,
   ledtrådar, dödsorsak, utförare och full rollinfo. Aldrig tillgänglig för spelare.
 - Djungel/Klassiskt färgtema per parti.
-- Mobil spelarvy är implementerad. Förberedelse-/mallportalen återstår.
+- Mobil spelarvy och de fyra GM-sidorna för bibliotek/mallar/spelare/start är implementerade.
 
 ## Lokal körning
 
@@ -108,7 +108,7 @@ Senaste beställningar är implementerade i källkod:
 2. Inga beställda ändringar i den senaste omgången återstår.
 3. Visuell kontroll av Enter-fokus, täthet och mobillayout görs via användarens
    återkoppling tills tillåten browserinspektion finns.
-4. Följ upp spelarvyn på användarens verkliga telefon; mallportalen återstår.
+4. Följ upp de fyra nya GM-sidorna och startflödet med användarens testning.
 
 ## Demokonton
 
@@ -175,3 +175,80 @@ Ordningen anges med texten Senaste meddelandet först. Automatisk skroll till
 botten är borttagen. Äldre historik läses nedåt. API-ordning och läsmarkering
 använder fortfarande serverns kronologiska lista; bara renderingen vänds med
 en kopia. GM:s befintliga chattlayout är oförändrad. Frontendbygget kontrolleras.
+
+
+## Aktuellt: fyra GM-sidor och kontrollerad spelstart
+
+Användaren förtydligade att mallar ska byggas från ett fristående bibliotek.
+Ingen spara-roller-/spara-mall-funktion ska finnas i Spelöversikten. Den
+felaktigt tolkade funktionen har tagits bort före commit/publicering.
+
+Implementerat och igång på lokal server:
+
+1. **Rollbibliotek** (SetupPortal/LibraryPage): CRUD för roller, powers,
+   vinstvillkor och grupper. Kopplingar mellan roll/grupp/win/powers.
+   power-typerna player-kill/player-other/Text/Yes-No/None, villkor,
+   GM-besked, delat gruppval och gruppchatt konfigureras här.
+2. **Partimallar**: namn, tema, spelarantal, exakt lika många rollplatser.
+   Dubbletter av en rolldefinition tillåts för flera platser. Använda poster
+   kan inte raderas utan att först ta bort kopplingarna.
+3. **Spelare**: test-/skarpa listor. Fiktiva namn och slumpade sexsiffriga PIN
+   genereras i test. Riktiga namngivna konton i skarpt, möjlighet att sätta
+   PIN (4–12 siffror), ändra konton och återanvända dem mellan listor.
+   PIN lagras enbart hashad, nygenererade koder returneras för visning en gång.
+   PIN-byte återkallar tidigare sessioner. Att lägga till ett befintligt
+   konto i en ny lista ändrar inte dess kod. GM kan inte läggas in som spelare.
+4. **Starta parti**: välj mall/lista och namn. Både klient och server kräver
+   samma antal roller/spelare. Förberedelsen får en egen snapshot av
+   definitionerna och slumpad tilldelning, utan att något visas för spelare.
+   GM kan slumpa om eller byta två spelares roller via dropdowns.
+   Godkänn rollfördelning och starta Live är det enda nya startflödet.
+   Om ett annat parti är Live krävs uttryckligt Ersätt-godkännande.
+   Fördelningen använder revisionsnummer mot dubbla/stale GM-kommandon.
+   Ändrad spelarlista blockerar godkännande; förbered igen för ny lista.
+
+Nollställning: avpublicerar berört parti och återgår till ett privat utkast
+med samma initiala fördelning. Omslumpning kan sedan göras. Nästa godkännande
+skapar en ny spelinstans; det tidigare partiets ALLA revisioner, meddelanden,
+anteckningar och dygn bevaras. Det gamla partiets automatik pausas.
+
+Live-status: separat singleton-tabell i SQLite, högst ett markerat parti.
+Testläge behåller bakåt/framåt även när testpartiet är Live för telefoner.
+Spelarens API-lista ger bara Live-partiet om kontot deltar; direktåtkomst
+till andra partiers data/chatt/SSE nekas på servern. Global katalog-SSE
+(/api/events) ger direkt byte även från vänteläge; återanslutning/synlig flik
+hämtar igen. Testhistorik kan aldrig återställa Live-markeringen.
+
+API och data:
+- src/setup.ts: GM-only /api/setup, bibliotek, partimallar, spelarlistor,
+  konton och förberedelser. src/setup-seed.ts seedar fasta definitioner.
+- SQLite library_groups/wins/powers/roles, library_role_powers,
+  party_templates/party_template_roles, player_rosters/roster_players,
+  game_preparations. Relationer/FK och transaktioner skyddar konsistensen.
+- Definitioner kopieras när fördelningsutkastet skapas, så senare biblioteks-
+  eller mallredigering inte ändrar det som GM redan granskar.
+- Nya partier börjar i Möte, dygn 1, utan gamla handlingar, dödsfall,
+  meddelanden eller anteckningar. Riktiga roster-konton används, inga
+  hårdkodade demospelare i det nya startflödet.
+- Frontend SetupPortal.tsx, fyra separata sidor via huvudmenyn. Spelöversikten
+  behåller kompakt spelarbete; inga mallredigeringskontroller där.
+
+Verifierat:
+- 25 tester passerade i full körning. Ett efterföljande separat test för
+  skarpt startflöde med namngivna konton passerade också (totalt 26 tester).
+- Täcker CRUD/referenser, exakt antal, PIN-hashning/ändring/återanvändning,
+  privata utkast, unik tilldelning, slumpning, manuellt byte, stale revision,
+  godkännande/Live/SSE, rollkopiors isolering, omstart, nollställning och
+  kvarvarande historik. HTTP-test går igenom hela nya flödet och behörigheter.
+- Backend typkontrollerar och frontend bygger. Verklig localhost-HTTP:
+  GM får 33 roller, 17 powers, 4 wins, 4 grupper, 3 partimallar (8/8/25).
+  Alla tre gamla testpartier finns kvar. Ingen spelarlista/förberedelse
+  har skapats automatiskt i användarens databas, inget är Live ännu.
+- Lokala servern är omstartad med --lan. Inga gamla partier har ändrats till
+  nya mallar eller fått nya deltagare. Telefon visar vänteläge tills GM
+  godkänt ett förberett parti. Browser/visuell QA via användarens återkoppling.
+
+Nästa test: öppna de nya sidorna efter omladdning, välj en färdig partimall,
+generera en testlista med rätt antal, förbered och granska, godkänn. Testa
+telefon med ett av de genererade kontona/PIN-koderna, inte automatiskt Alex.
+Nice-to-have-import av ett HELT speltillstånd återstår. JSON-export finns.
