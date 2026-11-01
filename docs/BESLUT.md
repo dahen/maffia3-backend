@@ -164,3 +164,10 @@ JSON-export finns; återinläsning är ännu inte implementerad.
 - Användaren bekräftar att Android kan skicka chatt från tangentbordet.
 - Ny rad med Shift+Enter fungerar på Windows men inte på provad Android.
   Begränsningen accepteras; lägg inte till en GUI-knapp för ny rad.
+
+## Synlig nedräkning
+
+- Broadcast som personligt GM-chattmeddelande är testat och godkänt.
+- Nedräkningen ska visas högst upp hela tiden i spelarvyn, t.ex. röd sista minuten.
+- Ta bort nedräkningens automatiska chattutskick efter att den nya visningen
+  fungerar och användaren har provat den. Behåll utskicken tills dess.

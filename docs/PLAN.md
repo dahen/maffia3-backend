@@ -131,3 +131,9 @@ Nice to have / idébank:
 - Skickat meddelande + tappad kvittens + omsändning ger ett meddelande.
 - Otillåten rumsåtkomst och åtkomst till annat parti nekas.
 - Kontrast, tangentbord, normal datorskärm utan sidledsskroll.
+
+## Nästa återkoppling: spelarens nedräkning
+
+Synlig sticky nedräkning är implementerad i frontend. Låt användaren testa
+på telefon; därefter ta bort automatiska chattpåminnelser från nedräkningen.
+Manuella broadcasts behålls. Alla fasbyten är fortsatt GM:s beslut.

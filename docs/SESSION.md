@@ -285,3 +285,20 @@ Backend typkontrollerar, frontend bygger, och ett nytt fokuserat HTTP-test
 passerar för namnlistans urval, döda konton, kontonamnbyte, Live-byte, vänteläge,
 PIN-kontroll och GM-login. Totalt finns nu 27 backendtester (26 tidigare
 verifierade plus det nya testet).
+
+## Synlig nedräkning i spelarvyn
+
+Användaren har verifierat att manuella broadcasts fungerar som GM-chatt.
+Önskar nu nedräkningen synlig högst upp hela tiden i spelarvyn, röd sista
+minuten. Automatiska nedräkningsmeddelanden ska tas bort först när användaren
+har provat och bekräftat den nya visningen. De är därför kvar tills vidare.
+
+Frontend PlayerCountdown visar serverns deadline som mm:ss, uppdaterad varje
+sekund och direkt när fliken återkommer från vila. Ligger sticky högst upp
+på både Min roll och Chatt, inklusive skroll. Menyflikarnas sticky-offset
+anpassas till räknaren och telefonens safe area. Temats accent är normalläge,
+rött vid <=60 sekunder, 0:00/Tiden är slut när tiden gått ut. Ingen fas ändras
+och inlämning spärras inte av räknaren; GM avslutar natten. Pausad automation
+vid testhistorik visas uttryckligen som Pausad utan en missvisande löpande tid.
+Stoppa eller fasbyte tar bort räknaren via befintlig SSE/omläsning.
+Frontendbygget passerar; telefonlayout återkopplas av användaren.
