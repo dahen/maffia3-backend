@@ -172,7 +172,7 @@ JSON-export finns; återinläsning är ännu inte implementerad.
    och checka in**. Namn-/fototavlan visas igen och nästa person kan fortsätta.
    Inga personliga PIN-koder eller mobiler behövs före spelstart.
    På localhost/HTTPS finns livekamera med tre sekunders fototimer. På vanlig
-   wifi-HTTP används kameraväljaren. Välj bild är ett alternativ.
+   wifi-HTTP används kameraväljaren. Ingen separat galleri-/bilduppladdning visas.
 3. GM ser närvarostatus och foton automatiskt. **Checka in manuellt** fungerar
    också utan foto. **Avaktivera** utesluter en utebliven ur det kommande partiet;
    konto/foto behålls och **Aktivera** kan återställa namnet.

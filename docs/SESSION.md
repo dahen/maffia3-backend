@@ -420,3 +420,19 @@ bygger. Servern är omstartad med senaste backend. Verklig localhost-HTTP
 bekräftar /camera och GM-kamera-API med 8 spelare i öppnad lista. Användarens
 lista är nu öppen; stäng/återställ den inte automatiskt. Webb-/iPad-kamera och
 utseendet behöver fortfarande användarens verkliga test.
+
+## Förenklat kameraflöde efter användarens test
+
+Användaren har provat kamerastationen och bekräftar att den fungerar.
+Den extra Ta om foto-knappen var otydlig/onödig och är borttagen. Även Välj
+bild och separat galleri-/bilduppladdning i GUI är borttagna. När livekameran
+är öppen finns bara dess Ta bilden-knapp och Avbryt kamera. Efter fotografering
+visas godkännande och avbryt; ingen extra Ta om-knapp visas parallellt.
+Ta foto visas endast när kameran inte är öppen och inget nytt foto väntar på
+godkännande (behövs för native kameraväljare på wifi-HTTP eller omstart efter
+avbruten kamera). Ingen separat galleriingång finns. Backend för att spara
+det tagna fotot är oförändrad. Frontendbygget passerar.
+
+- Användaren vill inte heller ha Checka in utan foto på /camera. Den knappen
+  är borttagen från kameratavlan. GM:s manuella incheckning under Spelare finns
+  kvar; kameratavlan är nu endast namnval, foto och godkännande.

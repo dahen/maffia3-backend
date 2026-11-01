@@ -205,3 +205,7 @@ JSON-export finns; återinläsning är ännu inte implementerad.
 - Kameratavlan visar tydligt vilka som är incheckade och vilka som återstår.
 - Detta är huvudflödet för incheckning. Personlig foto-/incheckningssida kan
   finnas som alternativ, men får inte vara ett krav för ankomsten.
+- Kamerastationen är nu användartestad och fungerar. Ta bort extra Ta om foto
+  och separat Välj bild/bilduppladdning; behåll ett enkelt fotografera/godkänn-flöde.
+- Ingen Checka in utan foto-knapp på camera-sidan. Manuell GM-incheckning
+  ligger kvar under Spelare.
