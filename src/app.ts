@@ -27,6 +27,13 @@ export function createApp(store: Store) {
   });
   app.get('/api/health', (_req, res) => res.json({ ok: true, database: Boolean(store.one('SELECT version FROM schema_migrations')) }));
   app.get('/api/session', (req, res) => res.json({ user: getUser(store, req) }));
+  app.get('/api/login/players', (_req, res) => {
+    const liveId=game.liveGameId(store);
+    if(!liveId)return res.json({names:[]});
+    const ids=new Set(game.loadGame(store,liveId).state.roles.map(role=>role.userId));
+    const names=store.all<{id:string;name:string}>('SELECT id,name FROM users WHERE admin=0').filter(player=>ids.has(player.id)).map(player=>player.name).sort((a,b)=>a.localeCompare(b,'sv'));
+    res.json({names});
+  });
   const attempts = new Map<string, { count: number; reset: number }>();
   app.post('/api/login', (req, res) => {
     const { name, pin } = z.object({ name: z.string().trim().min(1).max(100), pin: z.string().min(1).max(100) }).parse(req.body);

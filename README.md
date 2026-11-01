@@ -14,7 +14,7 @@ npm start
 ```
 
 Öppna http://127.0.0.1:3047 om frontend är byggd (se nedan).
-Demo: **GM / 2468**. Databasen finns i `data/maffia3.sqlite`.
+GM-inloggning: **http://127.0.0.1:3047/gm** · demo **GM / 2468**. Databasen finns i `data/maffia3.sqlite`.
 Seed skapar bara demodata i en tom installation och raderar aldrig gamla partier.
 
 Bygg frontend en gång före backendstart:
@@ -113,7 +113,10 @@ anslutningar och skriver ut adresser; välj adressen för datorns wifi-adapter
 (`ipconfig`), inte VMware/WSL. Telefonen öppnar `http://<wifi-IPv4>:3047`.
 Ingen separat frontendserver eller CORS-konfiguration behövs.
 
-Logga in på telefonen med ett konto/PIN från den spelarlista GM skapat.
+På telefonens startsida väljer spelaren sitt namn i dropdownen och anger
+PIN från den spelarlista GM skapat. Namnlistan visar Live-partiets deltagare,
+även döda spelare. Före Live-start är listan tom och uppdateras automatiskt.
+GM loggar in via `/gm`, där namn skrivs in manuellt.
 Telefonen saknar partiväljare och får sitt parti automatiskt när GM godkänt
 rollfördelningen. Före godkännande väntar spelaren på spelledningen.
 Spelarnas API filtrerar hemliga GM-data och nekar andra partier. Besked

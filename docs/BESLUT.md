@@ -154,3 +154,13 @@ Det är inte ett sätt att skapa rolldefinitioner eller partimallar. Befintlig
 JSON-export finns; återinläsning är ännu inte implementerad.
 - Spelare ska enkelt kunna skicka chatt från mobil: Enter skickar som i GM,
   Shift+Enter ger ny rad och en lättåtkomlig Skicka-knapp finns vid skrivfältet.
+
+
+## Inloggning och verifierad mobilchatt
+
+- Spelarnas namnfält ska vara en dropdown med spelarnas namn. GM får separat
+  inloggningsadress, implementerad som /gm. Listan avser det Live-markerade
+  partiet och innehåller även döda spelare.
+- Användaren bekräftar att Android kan skicka chatt från tangentbordet.
+- Ny rad med Shift+Enter fungerar på Windows men inte på provad Android.
+  Begränsningen accepteras; lägg inte till en GUI-knapp för ny rad.

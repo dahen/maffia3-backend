@@ -419,3 +419,18 @@ test('skarpt förberett parti kräver namngivna konton och godkännande och till
     const result=approvePreparation(f.store,f.gm,preparation,draft.revision,true);const view=gameView(f.store,result.gameId,f.gm);assert.equal(view.game.mode,'live');assert.equal(view.game.isLive,true);assert.equal(view.game.theme,'classic');assert.equal(view.canUndo,false);assert.deepEqual(new Set(view.roles.map(role=>role.player)),new Set(['Ada Andersson','Bertil Berg','Cecilia Carlsson','David Dahl']));assert.throws(()=>navigate(f.store,result.gameId,f.gm,'back',view.revision));
   }finally{f.store.close();}
 });
+
+test('publik namnlista visar bara Live-partiets spelarkonton och lämnar autentisering och GM-inloggning intakta',async()=>{
+  const f=fixture();const server=createApp(f.store).listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));const base=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
+  async function names(){const res=await fetch(base+'/api/login/players');assert.equal(res.status,200);return res.json();}
+  async function login(name:string,pin:string){return fetch(base+'/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,pin})});}
+  try{
+    const initial=await names();assert.deepEqual(initial,{names:f.state.roles.map(role=>role.player).sort((a,b)=>a.localeCompare(b,'sv'))});assert.ok(!initial.names.includes('GM'));assert.deepEqual(Object.keys(initial),['names']);
+    addUser(f.store,'Utanför partiet','9876');assert.ok(!(await names()).names.includes('Utanför partiet'));
+    const role=f.state.roles[0]!;setRoleFlags(f.store,f.id,f.gm,role.id,{alive:false,notes:'Hemlig info'});assert.ok((await names()).names.includes(role.player),'Döda spelare ska fortfarande kunna logga in');assert.ok(!JSON.stringify(await names()).includes('Hemlig info'));
+    const person=f.state.roles[1]!;updatePlayer(f.store,person.userId,{name:'Ändrat kontonamn'});assert.ok((await names()).names.includes('Ändrat kontonamn'));assert.ok(!(await names()).names.includes(person.player));
+    assert.equal((await fetch(base+'/api/games')).status,401);assert.equal((await login(role.player,'0000')).status,401);assert.equal((await login('GM','2468')).status,200);
+    setLiveGame(f.store,f.gm,null);assert.deepEqual(await names(),{names:[]});
+    const small=createGame(f.store,f.gm,'Fyra spelare','test',demoState(f.store,4));setLiveGame(f.store,f.gm,small);assert.equal((await names()).names.length,4);assert.ok(!(await names()).names.includes('Harper'));
+  }finally{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));f.store.close();}
+});

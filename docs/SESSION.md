@@ -262,4 +262,26 @@ med minst 44 px tryckyta, utan att behöva skrolla efter en knapp. Textfältet
 är readOnly under pågående sändning i stället för disabled, så tangentbordsfokus
 behålls. Skrivfel/nätverksfel behåller utkastet. Enter under IME-komposition
 skickar inte, och nedhållen Enter skapar inte upprepade sändningar.
-Frontendbygget passerar. Mobilens verkliga tangentbord provas av användaren.
+Frontendbygget passerar. Användaren har bekräftat att Android skickar från
+tangentbordet. Ny rad fungerar på Windows med Shift+Enter men inte på den
+provade Android-enheten. Det är en accepterad begränsning; ingen GUI-knapp
+för ny rad ska läggas till.
+
+
+## Inloggning med spelarlista och separat GM-adress
+
+Spelarinloggningen på / använder en dropdown med alla spelarkonton i det
+Live-markerade partiet, alfabetiskt sorterade. Även döda spelare ingår.
+GM-konton och andra partiers konton ingår inte. GET /api/login/players är
+publik och returnerar enbart names, ingen rollinfo, PIN eller användar-ID.
+Listan uppdateras var tionde sekund på synlig sida och när fliken återkommer.
+Om inget parti är Live visas vänteläge. PIN-autentiseringen är oförändrad.
+
+/gm visar separat GM-inloggning med namn (förvalt GM) och PIN. Inloggningssidorna
+länkar till varandra. Redan inloggade sessioner fortsätter fungera på båda
+adresserna. Gamla publika demoinloggningsuppgifter har tagits bort från vyn.
+
+Backend typkontrollerar, frontend bygger, och ett nytt fokuserat HTTP-test
+passerar för namnlistans urval, döda konton, kontonamnbyte, Live-byte, vänteläge,
+PIN-kontroll och GM-login. Totalt finns nu 27 backendtester (26 tidigare
+verifierade plus det nya testet).
