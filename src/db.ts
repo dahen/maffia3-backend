@@ -29,10 +29,15 @@ export class Store {
       CREATE TABLE IF NOT EXISTS party_templates (id TEXT PRIMARY KEY, name TEXT NOT NULL, players INTEGER NOT NULL CHECK(players BETWEEN 4 AND 25), theme TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS party_template_roles (template_id TEXT NOT NULL REFERENCES party_templates(id) ON DELETE CASCADE, position INTEGER NOT NULL, role_id TEXT NOT NULL REFERENCES library_roles(id), PRIMARY KEY(template_id,position));
       CREATE TABLE IF NOT EXISTS player_rosters (id TEXT PRIMARY KEY, name TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('test','live')));
-      CREATE TABLE IF NOT EXISTS roster_players (roster_id TEXT NOT NULL REFERENCES player_rosters(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id), PRIMARY KEY(roster_id,user_id));
+      CREATE TABLE IF NOT EXISTS roster_players (roster_id TEXT NOT NULL REFERENCES player_rosters(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id), active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)), PRIMARY KEY(roster_id,user_id));
       CREATE TABLE IF NOT EXISTS game_preparations (id TEXT PRIMARY KEY, name TEXT NOT NULL, mode TEXT NOT NULL, template_id TEXT NOT NULL REFERENCES party_templates(id), roster_id TEXT NOT NULL REFERENCES player_rosters(id), state_json TEXT NOT NULL CHECK(json_valid(state_json)), revision INTEGER NOT NULL DEFAULT 1, game_id TEXT REFERENCES games(id), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
       INSERT OR IGNORE INTO schema_migrations(version) VALUES(2);
+      CREATE TABLE IF NOT EXISTS photo_assets (id TEXT PRIMARY KEY, data BLOB NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE IF NOT EXISTS roster_attendance (roster_id TEXT NOT NULL REFERENCES player_rosters(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id), photo_id TEXT REFERENCES photo_assets(id), checked_at TEXT, checked_by TEXT REFERENCES users(id), PRIMARY KEY(roster_id,user_id));
+      CREATE TABLE IF NOT EXISTS checkin_lobby (singleton INTEGER PRIMARY KEY CHECK(singleton=1), roster_id TEXT REFERENCES player_rosters(id) ON DELETE SET NULL);
+      INSERT OR IGNORE INTO schema_migrations(version) VALUES(3);
     `);
+    if(!this.all<{name:string}>('PRAGMA table_info(roster_players)').some(column=>column.name==='active'))this.db.exec('ALTER TABLE roster_players ADD COLUMN active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))');
   }
   all<T>(sql: string, ...args: SQLInputValue[]): T[] { return this.db.prepare(sql).all(...args) as unknown as T[]; }
   one<T>(sql: string, ...args: SQLInputValue[]): T | undefined { return this.db.prepare(sql).get(...args) as unknown as T | undefined; }

@@ -5,6 +5,8 @@ import type { Store } from './db.ts';
 import { addUser, hashPin, Problem } from './auth.ts';
 import type { GameState, User, Theme } from './contracts.ts';
 import { createGame, initialRound, liveGameId, setLiveGame, mutate } from './game.ts';
+import { arrivals, lobbyId } from './checkin.ts';
+import type { Arrival } from './checkin.ts';
 
 const name=z.string().trim().min(1).max(100), text=z.string().max(4000), id=z.string().min(1);
 const pin=z.string().regex(/^\d{4,12}$/,'PIN ska vara 4–12 siffror.');
@@ -19,9 +21,9 @@ export interface LibraryWin {id:string;name:string;description:string}
 export interface LibraryPower {id:string;name:string;description:string;type:'player-kill'|'player-other'|'Text'|'Yes/No'|'None';conditional:boolean;gmResponse:boolean;shared:boolean}
 export interface LibraryRole {id:string;name:string;summary:string;gmHint:string;groupId:string|null;winId:string|null;powerIds:string[]}
 export interface PartyTemplate {id:string;name:string;players:number;theme:Theme;roleIds:string[]}
-export interface Roster {id:string;name:string;mode:'test'|'live';players:{id:string;name:string}[]}
+export interface Roster {id:string;name:string;mode:'test'|'live';players:Arrival[]}
 export interface Preparation {id:string;name:string;mode:'test'|'live';templateId:string;rosterId:string;revision:number;gameId:string|null;state:GameState;isLive:boolean}
-export interface SetupData {groups:LibraryGroup[];wins:LibraryWin[];powers:LibraryPower[];roles:LibraryRole[];templates:PartyTemplate[];rosters:Roster[];preparations:Preparation[];liveId:string|null}
+export interface SetupData {groups:LibraryGroup[];wins:LibraryWin[];powers:LibraryPower[];roles:LibraryRole[];templates:PartyTemplate[];rosters:Roster[];preparations:Preparation[];liveId:string|null;checkinRosterId:string|null}
 export type Kind='groups'|'wins'|'powers'|'roles';
 const tables={groups:'library_groups',wins:'library_wins',powers:'library_powers',roles:'library_roles'} as const;
 function exists(store:Store,table:typeof tables[Kind]|'party_templates'|'player_rosters',value:string){if(!store.one(`SELECT id FROM ${table} WHERE id=?`,value))throw new Problem(404,'Posten finns inte längre.');}
@@ -29,9 +31,9 @@ function referenced(work:()=>unknown){try{return work();}catch(error){if(error i
 export function setupData(store:Store):SetupData {
   const roles=store.all<Omit<LibraryRole,'gmHint'|'groupId'|'winId'|'powerIds'>&{gm_hint:string;group_id:string|null;win_id:string|null}>('SELECT * FROM library_roles ORDER BY name,id').map(({gm_hint,group_id,win_id,...role})=>({...role,gmHint:gm_hint,groupId:group_id,winId:win_id,powerIds:store.all<{power_id:string}>('SELECT power_id FROM library_role_powers WHERE role_id=? ORDER BY position',role.id).map(row=>row.power_id)}));
   const templates=store.all<Omit<PartyTemplate,'roleIds'>>('SELECT * FROM party_templates ORDER BY players,name,id').map(template=>({...template,roleIds:store.all<{role_id:string}>('SELECT role_id FROM party_template_roles WHERE template_id=? ORDER BY position',template.id).map(row=>row.role_id)}));
-  const rosters=store.all<Omit<Roster,'players'>>('SELECT * FROM player_rosters ORDER BY name,id').map(roster=>({...roster,players:store.all<{id:string;name:string}>('SELECT u.id,u.name FROM users u JOIN roster_players r ON r.user_id=u.id WHERE r.roster_id=? ORDER BY u.name,u.id',roster.id)}));
+  const rosters=store.all<Omit<Roster,'players'>>('SELECT * FROM player_rosters ORDER BY name,id').map(roster=>({...roster,players:arrivals(store,roster.id)}));
   const preparations=store.all<{id:string;name:string;mode:'test'|'live';template_id:string;roster_id:string;revision:number;game_id:string|null;state_json:string}>('SELECT * FROM game_preparations ORDER BY created_at DESC,rowid DESC').map(row=>({id:row.id,name:row.name,mode:row.mode,templateId:row.template_id,rosterId:row.roster_id,revision:row.revision,gameId:row.game_id,state:JSON.parse(row.state_json) as GameState,isLive:row.game_id!==null&&row.game_id===liveGameId(store)}));
-  return {groups:store.all<{id:string;name:string;description:string;chat:number}>('SELECT * FROM library_groups ORDER BY name,id').map(row=>({...row,chat:Boolean(row.chat)})),wins:store.all<LibraryWin>('SELECT * FROM library_wins ORDER BY name,id'),powers:store.all<{id:string;name:string;description:string;type:LibraryPower['type'];conditional:number;gm_response:number;shared:number}>('SELECT * FROM library_powers ORDER BY name,id').map(({gm_response,...row})=>({...row,gmResponse:Boolean(gm_response),conditional:Boolean(row.conditional),shared:Boolean(row.shared)})),roles,templates,rosters,preparations,liveId:liveGameId(store)};
+  return {groups:store.all<{id:string;name:string;description:string;chat:number}>('SELECT * FROM library_groups ORDER BY name,id').map(row=>({...row,chat:Boolean(row.chat)})),wins:store.all<LibraryWin>('SELECT * FROM library_wins ORDER BY name,id'),powers:store.all<{id:string;name:string;description:string;type:LibraryPower['type'];conditional:number;gm_response:number;shared:number}>('SELECT * FROM library_powers ORDER BY name,id').map(({gm_response,...row})=>({...row,gmResponse:Boolean(gm_response),conditional:Boolean(row.conditional),shared:Boolean(row.shared)})),roles,templates,rosters,preparations,liveId:liveGameId(store),checkinRosterId:lobbyId(store)};
 }
 export function saveLibrary(store:Store,kind:Kind,input:unknown,itemId?:string){
   return store.transaction(()=>{
@@ -55,12 +57,12 @@ export function savePartyTemplate(store:Store,input:unknown,templateId?:string){
 });}
 function roster(store:Store,key:string){const found=setupData(store).rosters.find(row=>row.id===key);if(!found)throw new Problem(404,'Spelarlistan finns inte.');return found;}
 export function generatePlayers(store:Store,rosterId:string,count:number){return store.transaction(()=>{
-  const list=roster(store,rosterId);if(list.mode!=='test')throw new Problem(400,'Fiktiva spelare skapas bara i testläget.');if(count<1||count+list.players.length>25)throw new Problem(400,'En spelarlista kan ha högst 25 spelare.');
+  const list=roster(store,rosterId);if(list.mode!=='test')throw new Problem(400,'Fiktiva spelare skapas bara i testläget.');if(count<1||count+list.players.filter(player=>player.active).length>25)throw new Problem(400,'En spelarlista kan ha högst 25 spelare.');
   const first=['Alva','Bo','Cleo','Disa','Elis','Freja','Ivar','Lo','Milo','Nora','Otto','Vera'];const last=['Asp','Berg','Dahl','Ek','Falk','Gran','Hed','Lind','Malm','Ny','Ros','Vik'];const credentials:{id:string;name:string;pin:string}[]=[];
   for(let index=0;index<count;index++){
     let playerName=`${first[randomInt(first.length)]} ${last[randomInt(last.length)]}`;
     if(store.one('SELECT id FROM users WHERE name=?',playerName))playerName+=` ${randomUUID().slice(0,6)}`;
-    const code=String(randomInt(100000,1000000));const player=addUser(store,playerName,code);store.run('INSERT INTO roster_players VALUES(?,?)',rosterId,player.id);credentials.push({id:player.id,name:player.name,pin:code});
+    const code=String(randomInt(100000,1000000));const player=addUser(store,playerName,code);store.run('INSERT INTO roster_players(roster_id,user_id) VALUES(?,?)',rosterId,player.id);credentials.push({id:player.id,name:player.name,pin:code});
   }
   return credentials;
 });}
@@ -68,12 +70,12 @@ export function createRoster(store:Store,input:unknown){return store.transaction
   const v=z.object({name,mode:z.enum(['test','live']),count:z.number().int().min(0).max(25).default(0)}).parse(input);const key=randomUUID();store.run('INSERT INTO player_rosters VALUES(?,?,?)',key,v.name,v.mode);if(v.mode==='live'&&v.count)throw new Problem(400,'Lägg till namngivna spelare i skarpt läge.');return {id:key,credentials:v.count?generatePlayers(store,key,v.count):[]};
 });}
 export function addRosterPlayer(store:Store,rosterId:string,input:unknown){return store.transaction(()=>{
-  const v=z.object({name,pin:pin.optional()}).parse(input);const list=roster(store,rosterId);if(list.players.length>=25)throw new Problem(400,'Listan har redan 25 spelare.');
+  const v=z.object({name,pin:pin.optional()}).parse(input);const list=roster(store,rosterId);if(list.players.filter(player=>player.active).length>=25)throw new Problem(400,'Listan har redan 25 spelare.');
   const existing=store.one<{id:string;admin:number}>('SELECT id,admin FROM users WHERE name=?',v.name);if(existing?.admin)throw new Problem(400,'Ett GM-konto kan inte användas som spelare.');
   if(existing&&list.players.some(p=>p.id===existing.id))throw new Problem(409,'Spelaren finns redan i listan.');if(!existing&&!v.pin)throw new Problem(400,'Ange en PIN-kod för det nya kontot.');
   const playerId=existing?.id??addUser(store,v.name,v.pin!).id;
   // Adding an existing account never silently changes its PIN.
-  store.run('INSERT INTO roster_players VALUES(?,?)',rosterId,playerId);return playerId;
+  store.run('INSERT INTO roster_players(roster_id,user_id) VALUES(?,?)',rosterId,playerId);return playerId;
 });}
 export function updatePlayer(store:Store,playerId:string,input:unknown){return store.transaction(()=>{
   const v=z.object({name,pin:pin.optional()}).parse(input);const user=store.one<{admin:number}>('SELECT admin FROM users WHERE id=?',playerId);if(!user||user.admin)throw new Problem(400,'Välj ett spelarkonto.');
@@ -82,7 +84,7 @@ export function updatePlayer(store:Store,playerId:string,input:unknown){return s
 function shuffle<T>(values:T[]){for(let index=values.length-1;index>0;index--){const other=randomInt(index+1);[values[index],values[other]]=[values[other]!,values[index]!];}return values;}
 function assignRandomly(state:GameState){const users=shuffle(state.roles.map(role=>({userId:role.userId,player:role.player})));state.roles.forEach((role,index)=>Object.assign(role,users[index]));for(const room of state.rooms)if(room.kind==='gm')room.name=state.roles.find(role=>role.id===room.roleIds[0])!.player;}
 export function prepareGame(store:Store,input:unknown){return store.transaction(()=>{
-  const v=z.object({name,templateId:id,rosterId:id}).parse(input);const data=setupData(store);const template=data.templates.find(t=>t.id===v.templateId);if(!template)throw new Problem(404,'Partimallen finns inte.');const players=roster(store,v.rosterId);
+  const v=z.object({name,templateId:id,rosterId:id}).parse(input);const data=setupData(store);const template=data.templates.find(t=>t.id===v.templateId);if(!template)throw new Problem(404,'Partimallen finns inte.');const sourceRoster=roster(store,v.rosterId);const players={...sourceRoster,players:sourceRoster.players.filter(player=>player.active)};
   if(players.players.length!==template.players||template.roleIds.length!==template.players)throw new Problem(400,'Mallen måste ha lika många roller som det finns spelare.');
   const roles=template.roleIds.map(roleId=>{const source=data.roles.find(role=>role.id===roleId)!;if(!source.winId)throw new Problem(400,`Rollen ${source.name} saknar vinstvillkor.`);return {id:randomUUID(),userId:'',player:'',name:source.name,summary:source.summary,win:data.wins.find(win=>win.id===source.winId)!.description,team:data.groups.find(group=>group.id===source.groupId)?.name??'',gmHint:source.gmHint,notes:'',alive:true,powers:source.powerIds.map(powerId=>{const p=data.powers.find(power=>power.id===powerId)!;return {id:randomUUID(),name:p.name,description:p.description,type:p.type,conditional:p.conditional,gmResponse:p.gmResponse,groupId:p.shared?p.id:null};})};});
   roles.forEach((role,index)=>{role.userId=players.players[index]!.id;role.player=players.players[index]!.name;});
@@ -98,9 +100,11 @@ export function changeAssignment(store:Store,key:string,revision:number,assignme
   store.run('UPDATE game_preparations SET state_json=?,revision=revision+1 WHERE id=?',JSON.stringify(value.state),key);
 });}
 export function approvePreparation(store:Store,user:User,key:string,revision:number,replaceLive=false){return store.transaction(()=>{
-  const value=draft(store,key,revision);if(value.gameId)throw new Problem(409,'Rollfördelningen är redan godkänd.');const current=roster(store,value.rosterId);const assigned=new Map(value.state.roles.map(role=>[role.userId,role.player]));if(current.players.length!==assigned.size||current.players.some(player=>assigned.get(player.id)!==player.name))throw new Problem(409,'Spelarlistan har ändrats. Förbered rollfördelningen igen.');
+  const value=draft(store,key,revision);if(value.gameId)throw new Problem(409,'Rollfördelningen är redan godkänd.');const currentRoster=roster(store,value.rosterId);const current={...currentRoster,players:currentRoster.players.filter(player=>player.active)};const assigned=new Map(value.state.roles.map(role=>[role.userId,role.player]));if(current.players.length!==assigned.size||current.players.some(player=>assigned.get(player.id)!==player.name))throw new Problem(409,'Spelarlistan har ändrats. Förbered rollfördelningen igen.');
+  const pending=current.players.filter(player=>!player.checkedIn);if(pending.length)throw new Problem(409,`${pending.length} aktiva spelare är inte incheckade: ${pending.map(player=>player.name).join(', ')}.`);
+  for(const role of value.state.roles)role.photoId=current.players.find(player=>player.id===role.userId)?.photoId??null;
   const previous=liveGameId(store);if(previous&&!replaceLive)throw new Problem(409,'Ett annat parti är Live. Bekräfta att det ska ersättas.');if(previous)setLiveGame(store,user,null);
-  const created=createGame(store,user,value.name,value.mode,value.state);if(value.mode==='test')setLiveGame(store,user,created);store.run('UPDATE game_preparations SET game_id=?,revision=revision+1 WHERE id=?',created,key);return {gameId:created,previous};
+  const created=createGame(store,user,value.name,value.mode,value.state);if(value.mode==='test')setLiveGame(store,user,created);store.run('UPDATE game_preparations SET game_id=?,revision=revision+1 WHERE id=?',created,key);store.run('UPDATE checkin_lobby SET roster_id=NULL WHERE roster_id=?',value.rosterId);return {gameId:created,previous};
 });}
 export function resetPreparation(store:Store,user:User,key:string,revision:number){return store.transaction(()=>{
   const value=draft(store,key,revision);const previous=value.gameId;if(previous){if(liveGameId(store)===previous)setLiveGame(store,user,null);mutate(store,previous,user,'GM nollställde förberedelsen; detta partis historik bevaras',()=>{});store.run('UPDATE games SET automation_paused=1 WHERE id=?',previous);}store.run('UPDATE game_preparations SET game_id=NULL,revision=revision+1 WHERE id=?',key);return previous;

@@ -10,15 +10,14 @@ import { targetsPlayer } from './contracts.ts';
 import { requireUser, requireGm, createSession, checkPin, logout, getUser, Problem } from './auth.ts';
 import * as game from './game.ts';
 import { demoState } from './demo.ts';
-import { broadcast, startCountdown, stopCountdown, tickCountdowns } from './broadcast.ts';
+import { broadcast, startCountdown, stopCountdown } from './broadcast.ts';
 import { gameLog } from './log.ts';
 import { setupRouter } from './setup.ts';
+import { checkinRouter, loginNames, photoBytes } from './checkin.ts';
 function path(req: Request, key = 'id') { return z.string().min(1).parse(req.params[key]); }
 
 export function createApp(store: Store) {
   const app = express(); const events = new EventEmitter(); events.setMaxListeners(100);
-  const tick = () => tickCountdowns(store, id => events.emit(id));
-  app.locals.tick = tick;
   app.disable('x-powered-by'); app.use(express.json({ limit: '32kb' }));
   app.use((_req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'same-origin'); res.setHeader('Cache-Control', 'no-store'); next(); });
   app.use((req, _res, next) => {
@@ -28,11 +27,7 @@ export function createApp(store: Store) {
   app.get('/api/health', (_req, res) => res.json({ ok: true, database: Boolean(store.one('SELECT version FROM schema_migrations')) }));
   app.get('/api/session', (req, res) => res.json({ user: getUser(store, req) }));
   app.get('/api/login/players', (_req, res) => {
-    const liveId=game.liveGameId(store);
-    if(!liveId)return res.json({names:[]});
-    const ids=new Set(game.loadGame(store,liveId).state.roles.map(role=>role.userId));
-    const names=store.all<{id:string;name:string}>('SELECT id,name FROM users WHERE admin=0').filter(player=>ids.has(player.id)).map(player=>player.name).sort((a,b)=>a.localeCompare(b,'sv'));
-    res.json({names});
+    res.json({names:loginNames(store)});
   });
   const attempts = new Map<string, { count: number; reset: number }>();
   app.post('/api/login', (req, res) => {
@@ -48,6 +43,8 @@ export function createApp(store: Store) {
   app.post('/api/logout', (req, res) => { logout(store, req, res); res.json({ ok: true }); });
   app.use('/api', requireUser(store));
   const user = (res: Response) => res.locals.user as User;
+  app.use('/api/checkin',checkinRouter(store,()=>{events.emit('catalog');for(const {id} of store.all<{id:string}>('SELECT id FROM games'))events.emit(id);}));
+  app.get('/api/photos/:photoId',(req,res)=>{const data=photoBytes(store,user(res),path(req,'photoId'));res.type('image/jpeg').send(data);});
   app.get('/api/games', (_req, res) => res.json(game.listGames(store, user(res))));
   app.post('/api/games', requireGm, (req, res) => {
     const input = z.object({ name: z.string().trim().min(1).max(100), size: z.number().int().min(4).max(25), mode: z.literal('test').default('test'), theme: z.enum(['jungle','classic']).default('jungle') }).parse(req.body);
