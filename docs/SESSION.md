@@ -302,3 +302,121 @@ och inlämning spärras inte av räknaren; GM avslutar natten. Pausad automation
 vid testhistorik visas uttryckligen som Pausad utan en missvisande löpande tid.
 Stoppa eller fasbyte tar bort räknaren via befintlig SSE/omläsning.
 Frontendbygget passerar; telefonlayout återkopplas av användaren.
+
+
+## Senast implementerat: ankomstlista, foton och enklare nedräkning
+
+Användarens avgörande förtydligande: checka in direkt vid ankomst, utan
+parti eller känd sluttotal. GM ska kunna avaktivera föranmälda som uteblir.
+Använd därför INTE rollfördelningsutkast eller ett Live-parti som förutsättning
+för incheckning. Modell och GUI bygger nu på player_rosters som ankomstlista.
+
+Flöde:
+1. GM går till Spelare, väljer/skapar lista och väljer Öppna incheckning.
+   En lista i taget kan vara öppen. Den kan ha noll spelare vid öppnandet;
+   lägg till konton efter hand eller använd föranmälda namn.
+2. GM öppnar /camera på en gemensam iPad, inloggad som GM en gång. Deltagarna
+   trycker på sitt namn/fotokort utan egen PIN eller mobil. Tavlan visar foto
+   och Incheckad/Ej incheckad för varje aktivt namn. Inget parti behöver finnas.
+3. Efter namnval: ta/godkänn bild och återgå automatiskt till namn-/fototavlan.
+   På localhost/HTTPS kan livewebbkamera användas med 3 sekunders fototimer.
+   På wifi-HTTP används native fil/kameraväljare med capture=user. Personlig
+   kamera-/incheckning efter spelarinloggning är ett alternativ, inte ett krav.
+4. GM ser bilder och incheckning live. Checka in manuellt tillåter avsaknad av
+   foto. Avaktivera utesluter ett namn ur kommande parti, utan att radera konto,
+   foto eller närvaroinfo. Aktivera återställer till listan. Pågående spels
+   rollkopior påverkas inte av att listan ändras.
+5. När antalet är klart: välj mall för antal AKTIVA spelare. Förberedelse får
+   rätt konton och rollfördelning. Godkännandet nekas av servern tills alla
+   aktiva är incheckade och deras ID/namn stämmer med fördelningen. En ändrad
+   aktiv lista kräver ny förberedelse. Godkännandet stänger samma listas
+   incheckning, publicerar rollerna och kopierar fotoreferenser enligt userId.
+
+Foton:
+- PlayerPhoto används vid målval (före spara-knappen), i spelarens nya flik
+  Spelare (bara levande, bara namn/foto) och som 26px GM-miniatyr vid identiteten.
+- CameraPage/CameraPanel skalar klientbild till max 640px och JPEG. Serverns
+  Sharp validerar signatur/format/pixelgräns, roterar, skalar och kodar om till
+  JPEG utan EXIF. Raw upload max 512 kB, klientens ursprungsfil max 20 MB.
+- Bilder är oföränderliga BLOBs i photo_assets. Speltillstånd/revisioner håller
+  bara photoId; inga base64-bilder dupliceras per revision. Gamla bilder finns
+  kvar när testhistoriken backas/framåt eller servern startas om.
+- GET /api/photos/:photoId kräver inloggning: GM får läsa, spelare får läsa eget
+  aktuellt foto i ankomstlistan och foton i sitt Live-parti. Andra spelares
+  foton före start och andra partiers bilder nekas. Ingen publik filkatalog.
+- Uppladdning är enbart till eget konto och binds till contextKey för rätt
+  ankomstlista/parti. Ett föråldrat sammanhang nekas utan nya bildposter.
+- Foto kan tas om under pågående spel. Om GM öppnar samma ankomstlista som
+  redan är Live uppdateras också det aktiva spelets fotoreferens, i ny revision.
+- JSON-export innehåller fotoreferenser; bilddata finns i SQLite och ingår
+  ännu inte i ett separat exportpaket.
+
+Schema/APIs:
+- Schema 3: roster_attendance, photo_assets, checkin_lobby. roster_players får
+  active med default 1; befintliga medlemskap bevaras via idempotent migration.
+- src/checkin.ts: GET /api/checkin, PUT /photo, POST /confirm och GM-only
+  /rosters/:id/lobby, /rosters/:id/players/:userId (+ /active).
+- /api/setup ger aktiva/incheckade/foton per roster. SetupPortal uppdateras
+  via global katalog-SSE på Spelare/Starta parti. Foto/status skickar bara
+  ändringsnotis; klienter hämtar behörighetsfiltrerad data.
+
+Nedräkning efter användarens bekräftade test:
+- Orange om något val återstår, röd vid <=60 sekunder, alltid grön när allt
+  är inskickat. Tiden är slut-förklaringen är GM avslutar snart natten.
+- GM har minutval, start/starta om, tid kvar och stopp direkt i nattens
+  simulation/workbar. Broadcast-drawern innehåller nu bara manuella utskick.
+- tickCountdowns, utskicksjobbet i servern och all automatisk påminnelsekod är
+  borttagna. Äldre historik och tidigare meddelanden finns kvar. Faser byts
+  fortfarande bara av GM. Testnavigering markerar nedräkningen som pausad;
+  starta om den för en ny deadline.
+
+Verifiering:
+- 32 backendtester passerar i den samlade körningen, inklusive HTTP, bildbehörighet, felaktig/stor
+  bild, rotation/metadata/komprimering, incheckning utan parti, GM-manuellt,
+  avaktivering och rätt deltagarantal, startspärr, foto efter rollbyte och
+  bevarade BLOBs vid historik/omstart. Nytt regressionstest täcker foto i redan
+  startat parti även med samma ankomstlista öppen.
+- Backend typkontrollerar och frontend bygger. Den egna lokala servern
+  uppgraderas med samma databas och --lan; inga befintliga partier startas om.
+- Verklig localhost-HTTP bekräftar /camera, schema/active-fält på befintlig
+  spelarlista och inloggningskrav. Senast fanns 1 roster och 1 förberedelse i
+  användarens DB; dessa kommer från användarens test och får inte raderas.
+- Verklig kamera på Android, miniatyrtäthet och sticky nedräkning behöver
+  användarens UI-test. Ingen visuell browser-QA påstås.
+
+Nästa test: ladda om GM, gå till Spelare och öppna befintlig ankomstlista.
+Använd /camera på telefonen. Testa avaktivering/återaktivering och se foton i
+Spelare-fliken, vid målval och i GM-tabellen. Ingen GUI-knapp för ny rad ska
+läggas till på Android (tidigare accepterad tangentbordsbegränsning).
+
+
+## Rättat /camera för delad GM-enhet
+
+Användaren påpekade att /camera inte fungerade som väntat. HTTP-adressen
+svarade 200, men App valde först kameravyn enbart för icke-GM. Detta är rättat:
+/camera fungerar för båda kontotyperna. GM får SharedCamera med rutnät av
+namn, foton och närvaro från den öppna ankomstlistan (eller Live-deltagare
+om ingen lista är öppen). Under Spelare finns länk Öppna gemensam kamerastation.
+Om GM behöver logga in från kameravyn går /gm?next=/camera tillbaka dit efter
+lyckad inloggning. localhost och 127.0.0.1 har separata sessionscookies.
+
+Kamerastationen använder GM-sessionen. Ingen individuell PIN krävs när varje
+ankommande väljer sitt namn. LiveCamera på localhost/HTTPS har speglad livevy,
+3-sekunders nedräkning och stänger kamerans tracks när rutan stängs eller ett
+foto tas. iPad på vanlig wifi-HTTP använder kameraväljaren i stället. Efter
+Använd fotot och checka in stängs personrutan och tavlan uppdateras via SSE.
+GM: checka in utan foto finns också på korten. Personlig kamera behålls som
+alternativ i vänteläge och under Spelare, men är inte det primära entréflödet.
+
+GET /api/checkin/camera är GM-only och ger namn/foto/status utan roller.
+GM får välja userId vid GET /checkin och X-Player-Id vid fotouppladdning;
+spelar-sessioner nekas att välja ett annat konto. Actor för GM-uppladdning
+sparas som GM även om bilden hör till vald deltagare. Test bekräftar delad
+station helt före parti/förberedelse. Ett annat test bekräftar att avaktivering
+av återbud lämnar plats för ersättare (max 25 aktiva, fler bevarade namn tillåts).
+
+Aktuellt verifierat: 32/32 tester passerar, backend typkontrollerar, frontend
+bygger. Servern är omstartad med senaste backend. Verklig localhost-HTTP
+bekräftar /camera och GM-kamera-API med 8 spelare i öppnad lista. Användarens
+lista är nu öppen; stäng/återställ den inte automatiskt. Webb-/iPad-kamera och
+utseendet behöver fortfarande användarens verkliga test.

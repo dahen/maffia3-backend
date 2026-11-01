@@ -25,3 +25,16 @@ partimallar, test-/skarpa spelarlistor och start/godkännande av rollfördelning
 Ingen spara-roller-/spara-mall-knapp från Spelöversikten. Endast godkänd
 rollfördelning blir Live. Nollställning bevarar föregående partis historik.
 Spara/läsa in HELA speltillstånd är endast nice-to-have; import återstår.
+
+Incheckning hör till fristående ankomstlista (roster), inte till förberett
+eller Live-parti. GM kan avaktivera uteblivna. Mallantal räknar aktiva och
+start kräver att alla aktiva är incheckade. Foton är versionerade BLOBs med
+referenser i spelsnapshots, ingen base64-duplicering. Camera använder native
+fil/kameraväljare så att befintlig wifi-HTTP går att använda.
+Nedräkningens automatiska chattutskick är borttagna efter användarens test.
+Manuella broadcasts är kvar; alla fasbyten görs av GM.
+
+PRIMÄRT kameraflöde: delad iPad som i V1. GM öppnar /camera en gång, alla
+ankommande trycker på sitt namn/foto och fotograferas utan egen PIN/mobil.
+Tavlan visar incheckade/ej incheckade och återkommer efter varje godkänt foto.
+Personlig mobilincheckning är endast ett alternativ, inte ett krav före start.

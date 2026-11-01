@@ -171,3 +171,37 @@ JSON-export finns; återinläsning är ännu inte implementerad.
 - Nedräkningen ska visas högst upp hela tiden i spelarvyn, t.ex. röd sista minuten.
 - Ta bort nedräkningens automatiska chattutskick efter att den nya visningen
   fungerar och användaren har provat den. Behåll utskicken tills dess.
+
+
+## Foto och fristående incheckning
+
+- Återskapa nyttan från V1:s Camera: deltagarna tar egna foton och checkar in.
+- Incheckning måste fungera direkt vid ankomst, utan valt/förberett/startat
+  parti. Ankomstlistan är fristående från mallar och rollfördelning.
+- GM kan checka in manuellt, även utan foto. Alla aktiva som ska spela måste
+  vara incheckade innan GM får starta spelet.
+- Föranmälda som inte dyker upp ska enkelt kunna avaktiveras av GM. Namn och
+  foto sparas, återaktivering möjlig. Mallval och rollantal använder de aktiva.
+- Foto visas vid vald måltavla för att säkerställa identitet.
+- Spelarna får en flik med alla levande deltagare och foton, utan rollinfo.
+- GM får miniatyrer vid varje spelaridentitet i Spelöversikten.
+
+## Bekräftad nedräkning och snabb åtkomst
+
+- Spelarvyns nedräkning är testad och godkänd.
+- Räknaren ska vara grön när alla spelarens nattval är inskickade. Annars
+  orange, och röd sista minuten. Status framgår också i text.
+- Texten efter tidsgränsen ska vara GM avslutar snart natten.
+- Start/stopp/tid kvar ska nås direkt i GM-vyn, utan Broadcast-drawern.
+- Automatiska chattpåminnelser tas nu bort enligt tidigare stegplan.
+  Manuella broadcasts fungerar och behålls. Endast GM byter fas.
+
+
+## Kamerastationen är primärt en gemensam iPad (V1-flödet)
+
+- En delad iPad ska kunna stå öppen på Camera. GM öppnar/loggar in en gång.
+- Deltagaren trycker på sitt eget namn/fotokort, tar foto och godkänner det.
+  Ingen deltagare behöver logga in med egen PIN eller använda sin mobil före spelstart.
+- Kameratavlan visar tydligt vilka som är incheckade och vilka som återstår.
+- Detta är huvudflödet för incheckning. Personlig foto-/incheckningssida kan
+  finnas som alternativ, men får inte vara ett krav för ankomsten.

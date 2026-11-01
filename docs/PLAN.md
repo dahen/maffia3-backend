@@ -48,7 +48,7 @@ förslag som inte ska behandlas som nya krav från användaren.
 - GM:s "se som spelare" ska använda spelarens serverfiltrerade datavy.
 - Tangentbord: snabbt spara GM-svar och gå vidare till nästa rad.
 - Massmeddelande till alla levande eller endast ej klara.
-- Nedräkning kopplad till serverns tid, påminnelse utan automatiskt fasbyte.
+- Synlig nedräkning med serverdeadline och direkt GM-kontroll, inga automatiska chattutskick eller fasbyten.
 - Läsning och "hanterat" separata för GM-chatt.
 - Tydlig hantering av döda spelare, grupputförare och villkorade powers.
 - Simulering av spelarchatt och flera samtidiga spelare.
@@ -93,7 +93,7 @@ Nice to have / idébank:
 
 - Spara och läsa in ett helt speltillstånd för test, separat från mallflödet.
 - Importera utvalda V2-definitioner utan personnamn, anteckningar eller status.
-- Porträtt/kamera/namnlista från V1 vid behov.
+- Kamera/incheckning från V1 är nu implementerat med fristående ankomstlista och aktiv-/inaktivhantering.
 - Balansanteckningar och mer avancerad jämförelse mellan rollkombinationer.
 
 ## Teknisk riktning (agentens val, kan omprövas)
@@ -132,8 +132,16 @@ Nice to have / idébank:
 - Otillåten rumsåtkomst och åtkomst till annat parti nekas.
 - Kontrast, tangentbord, normal datorskärm utan sidledsskroll.
 
-## Nästa återkoppling: spelarens nedräkning
+## Nästa återkoppling: kamera och ankomstlista
 
-Synlig sticky nedräkning är implementerad i frontend. Låt användaren testa
-på telefon; därefter ta bort automatiska chattpåminnelser från nedräkningen.
+Implementerat: gemensam iPad-kamerastation som V1, fristående incheckning före
+partimall, foto, GM-manuell närvaro,
+avaktivering av uteblivna, startkrav för aktiva, målbild, levandelista och
+GM-miniatyrer. Testa faktisk Android-kamera och översiktens täthet med användaren.
+
+Nedräkningen är användarverifierad. Färgerna följer inskickat/återstående,
+GM-kontroll ligger direkt i nattvyn och automatiska chattpåminnelser är borttagna.
 Manuella broadcasts behålls. Alla fasbyten är fortsatt GM:s beslut.
+
+Framtida nice-to-have: fotoexport ihop med JSON-export, och import av hela
+speltillstånd. SQLite-backup innehåller redan bilddata.

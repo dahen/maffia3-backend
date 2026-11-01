@@ -46,8 +46,9 @@ För frontendutveckling: kör `npm run dev` i frontendmappen, behåll backend p�
 9. **Logg**: sök i hela partiet och visa alternativa grenar vid behov.
 10. **Chattar**: personlig GM-chatt och gruppchatt. I testparti kan du välja
     en simulerad spelare som avsändare. Använd två fönster för liveuppdatering.
-11. **Broadcast**: manuella utskick till alla levande/ej klara eller starta
-    nedräkning. Påminnelser vid 3 min, 1 min och 0, aldrig automatiskt fasbyte.
+11. **Broadcast**: manuella utskick till alla levande/ej klara. Nattens
+    nedräkning startas/stoppas direkt i GM-vyn, visas sticky för spelarna och
+    skickar inga automatiska chattmeddelanden. Endast GM byter fas.
 12. **Inkommande**: vid en player-kill visas **Bekräfta död**. GM bekräftar och
     utförare/förmåga/ursprungligt historiksteg sparas till logg och morgonvy.
     player-other används för andra spelarval, exempelvis skydd eller spaning.
@@ -74,8 +75,8 @@ värden. Vid testnavigering ändras bara pekaren till aktiv revision.
 
 JSON-exporten innehåller samtliga revisioner och grenar. Den är ett komplement
 till databasens vanliga beständighet, inte ett krav för att behålla gamla dygn.
-Läspositioner för chatt ligger separat. Testnavigering pausar automatiska
-utskick; en ny uttrycklig nedräkningsstart återaktiverar dem.
+Läspositioner för chatt ligger separat. Testnavigering markerar nedräkningen
+som pausad; starta om den för en ny deadline.
 
 Första modellen prioriterar enkel verifierbar historik för 25 spelare/10 dygn.
 Varje revision duplicerar ett helt tillstånd. Vid stor chattvolym bör modellen
@@ -115,7 +116,8 @@ Ingen separat frontendserver eller CORS-konfiguration behövs.
 
 På telefonens startsida väljer spelaren sitt namn i dropdownen och anger
 PIN från den spelarlista GM skapat. Namnlistan visar Live-partiets deltagare,
-även döda spelare. Före Live-start är listan tom och uppdateras automatiskt.
+även döda spelare, samt aktiva i den öppna ankomstlistan. Listan uppdateras
+automatiskt och kan användas före Live-start för incheckning.
 GM loggar in via `/gm`, där namn skrivs in manuellt.
 Telefonen saknar partiväljare och får sitt parti automatiskt när GM godkänt
 rollfördelningen. Före godkännande väntar spelaren på spelledningen.
@@ -159,3 +161,30 @@ växla mellan sina partier utan att påverka vilket som är Live.
 
 Att spara/läsa in hela speltillstånd för tester är nice-to-have.
 JSON-export finns; återinläsning är ännu inte implementerad.
+
+
+## Foto och ankomst utan startat parti
+
+1. Under **Spelare**, skapa/välj en lista och välj **Öppna incheckning**.
+   Ingen mall eller fördelning behövs. Lägg till namn efter hand om det behövs.
+2. GM öppnar `/camera` på en gemensam iPad (GM-inloggning en gång).
+   Varje deltagare trycker på sitt namn, tar foto och väljer **Använd fotot
+   och checka in**. Namn-/fototavlan visas igen och nästa person kan fortsätta.
+   Inga personliga PIN-koder eller mobiler behövs före spelstart.
+   På localhost/HTTPS finns livekamera med tre sekunders fototimer. På vanlig
+   wifi-HTTP används kameraväljaren. Välj bild är ett alternativ.
+3. GM ser närvarostatus och foton automatiskt. **Checka in manuellt** fungerar
+   också utan foto. **Avaktivera** utesluter en utebliven ur det kommande partiet;
+   konto/foto behålls och **Aktivera** kan återställa namnet.
+4. Välj sedan mall för antalet **aktiva**, förbered fördelningen och starta först
+   när alla aktiva är incheckade. Servern kontrollerar detta även utanför GUI.
+
+Spelarens flik **Spelare** visar bara levande deltagare med foton. Målval visar
+bild och namn före sparning. GM får små foton vid spelarraderna. Foto kan tas
+om via Mitt foto/incheckning. Bilder är åtkomstskyddade JPEG-BLOBs i SQLite,
+max 640px, med borttagen EXIF. De dupliceras inte i varje spelsnapshot.
+JSON-export innehåller bildreferenser; ta databasbackup för själva bilddata.
+
+Nedräkningens text/färg: orange om nattval återstår, röd sista minuten, grön
+när allt är inskickat. Vid noll: **GM avslutar snart natten**. Manuella broadcasts
+är kvar; automatiska nedräkningsmeddelanden är borttagna.
