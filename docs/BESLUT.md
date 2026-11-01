@@ -152,3 +152,5 @@ Ingen funktion för att spara roller/mallar från Spelöversikten. MUST HAVE:
 NICE TO HAVE: spara/läsa in hela speltillstånd från Spelöversikten för tester.
 Det är inte ett sätt att skapa rolldefinitioner eller partimallar. Befintlig
 JSON-export finns; återinläsning är ännu inte implementerad.
+- Spelare ska enkelt kunna skicka chatt från mobil: Enter skickar som i GM,
+  Shift+Enter ger ny rad och en lättåtkomlig Skicka-knapp finns vid skrivfältet.

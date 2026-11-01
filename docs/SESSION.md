@@ -252,3 +252,14 @@ Nästa test: öppna de nya sidorna efter omladdning, välj en färdig partimall,
 generera en testlista med rätt antal, förbered och granska, godkänn. Testa
 telefon med ett av de genererade kontona/PIN-koderna, inte automatiskt Alex.
 Nice-to-have-import av ett HELT speltillstånd återstår. JSON-export finns.
+
+## Spelarchatt: Enter skickar
+
+Spelarens chatt har samma genväg som GM: Enter skickar, Shift+Enter ger ny rad.
+Mobilens tangentbord får enterKeyHint=send; faktisk tangentetikett och hantering
+kan skilja mellan tangentbord. Skicka är därför kvar direkt intill skrivfältet
+med minst 44 px tryckyta, utan att behöva skrolla efter en knapp. Textfältet
+är readOnly under pågående sändning i stället för disabled, så tangentbordsfokus
+behålls. Skrivfel/nätverksfel behåller utkastet. Enter under IME-komposition
+skickar inte, och nedhållen Enter skapar inte upprepade sändningar.
+Frontendbygget passerar. Mobilens verkliga tangentbord provas av användaren.
