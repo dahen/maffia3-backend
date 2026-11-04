@@ -209,3 +209,6 @@ JSON-export finns; återinläsning är ännu inte implementerad.
   och separat Välj bild/bilduppladdning; behåll ett enkelt fotografera/godkänn-flöde.
 - Ingen Checka in utan foto-knapp på camera-sidan. Manuell GM-incheckning
   ligger kvar under Spelare.
+
+- GM ska se antal olästa chattmeddelanden på Spelöversikt i huvudmenyn,
+  även när en annan huvudflik är öppen.

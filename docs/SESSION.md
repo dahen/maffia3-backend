@@ -436,3 +436,22 @@ det tagna fotot är oförändrad. Frontendbygget passerar.
 - Användaren vill inte heller ha Checka in utan foto på /camera. Den knappen
   är borttagen från kameratavlan. GM:s manuella incheckning under Spelare finns
   kvar; kameratavlan är nu endast namnval, foto och godkännande.
+
+
+## 2026-11-04: GM ser oläst chatt i huvudmenyn
+
+Spelöversikt i huvudmenyn visar nu samma sammanlagda antal olästa
+chattmeddelanden som Chattar-knappen för valt parti (privata och grupper).
+Räknaren är synlig också på Morgon, Logg och alla fyra förberedelsesidor.
+Befintlig SSE-prenumeration i App fortsätter mellan flikarna, så nya
+meddelanden och läskvittenser uppdaterar antalet utan omladdning. Menybytet
+markerar inte meddelanden som lästa; det sker när respektive chatt öppnas.
+Räknaren döljs vid noll och använder temats accentfärg med vit text.
+Verifiering: frontendens typkontroll och produktionsbygge. Ingen ändring av
+backend eller deploy till användarens Docker-installation.
+
+Användaren kör nu även publikt på maffia.steensland.se via Docker på Mac mini
+med reverse proxy på NAS. Mobilchatt, mobilfoto och bevarad data efter
+containeromstart är användarverifierade. Föregående UI-test av övningspartiet
+på publika sajten verifierade dygnsflöde, fasvarningar, dödsorsaker,
+GM-besked/Enter, morgonvy, logg och historik bakåt/framåt.
