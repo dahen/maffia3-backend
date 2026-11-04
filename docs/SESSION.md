@@ -455,3 +455,15 @@ med reverse proxy på NAS. Mobilchatt, mobilfoto och bevarad data efter
 containeromstart är användarverifierade. Föregående UI-test av övningspartiet
 på publika sajten verifierade dygnsflöde, fasvarningar, dödsorsaker,
 GM-besked/Enter, morgonvy, logg och historik bakåt/framåt.
+
+
+## 2026-11-04: Egna meddelanden i spelarens chatt
+
+Spelarvyn skiljer nu egna meddelanden från andras genom högerplacering,
+temats mörka accentfärg med vit text samt etiketten Du framför namnet.
+Andras meddelanden ligger till vänster på ljus bakgrund; GM behåller ljus
+accentbakgrund. Avsändarens stabila användar-ID jämförs med inloggad user.id,
+inte visningsnamn. Gäller både gruppchatt och personlig GM-chatt.
+Senaste meddelandet först, inmatning och läskvittenser är oförändrade.
+Verifiering: frontendens typkontroll och produktionsbygge. Publika Docker-
+installationen behöver uppdateras av användaren; ingen deploy utförd.

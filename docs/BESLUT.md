@@ -212,3 +212,6 @@ JSON-export finns; återinläsning är ännu inte implementerad.
 
 - GM ska se antal olästa chattmeddelanden på Spelöversikt i huvudmenyn,
   även när en annan huvudflik är öppen.
+
+- Spelarnas egna chattmeddelanden ska skilja sig visuellt från andras,
+  så att man kan följa samtalet utan att jämföra avsändarnamn.
