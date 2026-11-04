@@ -145,3 +145,14 @@ Manuella broadcasts behålls. Alla fasbyten är fortsatt GM:s beslut.
 
 Framtida nice-to-have: fotoexport ihop med JSON-export, och import av hela
 speltillstånd. SQLite-backup innehåller redan bilddata.
+
+
+## Nästa driftsteg på mini
+
+Kod för GM-uppdateringssida, hosttjänst och GitHub/GHCR-releaseflöde är klar.
+Mini-chatten ska följa deploy/README.md och deploy/MINI-HANDOFF.md för verklig
+installation: Docker-åtkomst, privat nyckel/nätkoppling, registry-behörighet,
+första release/manuell bootstrap och återställningstest på separat volym.
+Därefter ett verkligt knapptest mellan två releaser. Ingen deploy har gjorts
+från Windows. Automatisk backuprotation, hostens egen uppdatering och helt
+automatisk databasrollback ingår inte i första versionen.

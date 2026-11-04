@@ -188,3 +188,9 @@ JSON-export innehåller bildreferenser; ta databasbackup för själva bilddata.
 Nedräkningens text/färg: orange om nattval återstår, röd sista minuten, grön
 när allt är inskickat. Vid noll: **GM avslutar snart natten**. Manuella broadcasts
 är kvar; automatiska nedräkningsmeddelanden är borttagna.
+
+## Uppdateringar på mini
+
+GM-styrda uppdateringar med färdigbyggda images och separat hostprocess:
+se [deploy/README.md](deploy/README.md). Förberedelseprompt för mini-chatten:
+[deploy/MINI-HANDOFF.md](deploy/MINI-HANDOFF.md). Ingen deploy sker vid git push.

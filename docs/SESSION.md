@@ -467,3 +467,43 @@ inte visningsnamn. Gäller både gruppchatt och personlig GM-chatt.
 Senaste meddelandet först, inmatning och läskvittenser är oförändrade.
 Verifiering: frontendens typkontroll och produktionsbygge. Publika Docker-
 installationen behöver uppdateras av användaren; ingen deploy utförd.
+
+
+## 2026-11-04: GM-styrda uppdateringar för mini – implementerat, inte installerat
+
+Användaren godkände färdigbyggda GitHub-images och separat liten hosttjänst.
+Ny `src/updates` innehåller fast releasekontrakt, GM-only API-proxy och
+hostprocess för Node på mini. Hostprocessen har den enda Docker-åtkomsten;
+webbcontainern får bara URL och delad nyckel. GitHub-releaser binder ihop båda
+repornas exakta commits med en gemensam image-digest (ARM64 + AMD64).
+
+`.github/workflows/release.yml` är MANUELL workflow_dispatch, med version och
+frontend-SHA. Den testar backend/bygger frontend, pushar GHCR-image och
+publicerar sedan release-manifest. En vanlig push deployar/publicerar inget.
+Första releasen måste installeras manuellt; befintliga appen saknar knappen.
+Hosttjänsten är inte självuppdaterande. Exempel för Dockerfile, privat config,
+Compose-miljö och LaunchAgent finns i deploy/. Installationsunderlag:
+`deploy/README.md`. Prompt till mini-chatten: `deploy/MINI-HANDOFF.md`.
+
+GM har separat Uppdateringar-sida, Ny-markering, versionsinfo, bekräftelse,
+jobbstatus och omladdningsknapp. Fungerar utan parti. Ingen spelare får se
+updaterstatus/nycklar. Hämtning före stopp, konsekvent arkiv av hela stoppade
+volymen inklusive SQLite/WAL/foton, arkivkontroll, återskapande av endast app,
+hälsokontroll. Alla Docker-anrop är execFile-argument, inga godtyckliga shell-
+kommandon från nätet. Validerar fasta namn, databas-/volymmount och image-labels.
+Jobb sparas utanför containern och dubbla request-ID är idempotenta.
+
+Viktig avgränsning: om den NYA versionen inte startar stoppas den och hosten
+kräver manuell återställning på mini. Ingen automatisk databasåterläsning som
+kan kasta skrivningar eller starta gammal kod mot migrerat schema. Backup och
+föregående image-ID bevaras. Avbruten hostprocess kräver också operatörskontroll.
+GM-sidan kan inte nås medan själva appen är stoppad; status finns på hostdisk.
+
+Verifiering: 41/41 backendtester passerar (9 nya för host/proxy/release/fel-
+vägar/behörigheter/idempotens/beständighet). Typkontroll och frontendbygge går
+igenom. Efter utökad tar-innehållskontroll passerar de 9 nya testerna igen.
+Docker-runner är simulerad; lokal Docker-daemon är inte igång. Verkligt image-
+bygge, GitHub Actions, GHCR, nätväg från container och backupåterställning ska
+verifieras på mini. Ingen riktig release är publicerad och ingen deploy utförd.
+Isolerad webbläsarpreview (minnes-DB/falsk host) verifierade versionsindikering,
+bekräftelse och uppdateringsjobb; rör inga riktiga partier eller containrar.

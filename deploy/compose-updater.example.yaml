@@ -1,0 +1,7 @@
+# Merge these settings into the existing app service on mini. Keep its ports,
+# healthcheck, volume, project name and other environment settings.
+services:
+  app:
+    environment:
+      MAFFIA_UPDATER_URL: http://host.docker.internal:3048
+      MAFFIA_UPDATER_TOKEN: ${MAFFIA_UPDATER_TOKEN:?Set the shared host-updater secret}

@@ -215,3 +215,14 @@ JSON-export finns; återinläsning är ännu inte implementerad.
 
 - Spelarnas egna chattmeddelanden ska skilja sig visuellt från andras,
   så att man kan följa samtalet utan att jämföra avsändarnamn.
+
+
+## GM-styrd deploy på mini
+
+- Användaren har godkänt färdigbyggda images från GitHub och en separat liten
+  hosttjänst som webbcontainern anropar via nätet. Webbappen får ingen generell
+  Docker-/shellåtkomst. Endast Maffia-installationen ska kunna uppdateras.
+- GM ser installerad/ny version och startar uttryckligen uppdateringen.
+  Ingen automatisk uppdatering under parti. En release binder ihop frontend
+  och backend; push till GitHub ska inte automatiskt starta om publika appen.
+- Befintlig datavolym bevaras och säkerhetskopieras före containerbyte.
