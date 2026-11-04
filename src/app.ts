@@ -14,6 +14,7 @@ import { broadcast, startCountdown, stopCountdown } from './broadcast.ts';
 import { gameLog } from './log.ts';
 import { setupRouter } from './setup.ts';
 import { checkinRouter, loginNames, photoBytes } from './checkin.ts';
+import { updatesRouter } from './updates/routes.ts';
 function path(req: Request, key = 'id') { return z.string().min(1).parse(req.params[key]); }
 
 export function createApp(store: Store) {
@@ -42,6 +43,7 @@ export function createApp(store: Store) {
   });
   app.post('/api/logout', (req, res) => { logout(store, req, res); res.json({ ok: true }); });
   app.use('/api', requireUser(store));
+  app.use('/api/admin/updates', updatesRouter());
   const user = (res: Response) => res.locals.user as User;
   app.use('/api/checkin',checkinRouter(store,()=>{events.emit('catalog');for(const {id} of store.all<{id:string}>('SELECT id FROM games'))events.emit(id);}));
   app.get('/api/photos/:photoId',(req,res)=>{const data=photoBytes(store,user(res),path(req,'photoId'));res.type('image/jpeg').send(data);});

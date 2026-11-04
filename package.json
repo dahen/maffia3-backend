@@ -12,7 +12,8 @@
     "check": "tsc --noEmit",
     "test": "node --test tests/*.test.ts",
     "seed": "node src/seed.ts",
-    "start:lan": "node src/server.ts --lan"
+    "start:lan": "node src/server.ts --lan",
+    "updater:host": "node src/updates/host.ts"
   },
   "dependencies": {
     "express": "^5.3.0",
