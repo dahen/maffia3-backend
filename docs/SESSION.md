@@ -514,3 +514,7 @@ Mini kör v0.1.0 enligt installationsrapporten. GM:s skärmbild bekräftade
 versionsstatus och visade att omladdningsknappen låg kvar efter omladdning.
 Från v0.1.1 byggs releaseversionen in i frontend. Efter ett slutfört jobb
 visas knappen bara om webbläsarens version skiljer sig från serverns.
+
+Uppdateringen till v0.1.1 är verifierad via GM-vyn på mini. Användaren vill
+återanvända GitHub Releases, uppdateringsknappen och LaunchAgent för andra appar
+på mini. Mönstret finns i [deploy/MINI-PATTERN.md](../deploy/MINI-PATTERN.md).
