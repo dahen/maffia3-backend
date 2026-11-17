@@ -7,7 +7,8 @@ RUN cd maffia3-frontend && npm ci
 COPY maffia3-backend ./maffia3-backend
 COPY maffia3-frontend ./maffia3-frontend
 RUN cd maffia3-backend && npm run check
-RUN cd maffia3-frontend && npm run build
+ARG VERSION
+RUN cd maffia3-frontend && VITE_MAFFIA_VERSION="$VERSION" npm run build
 
 FROM node:24-bookworm-slim
 ARG VERSION

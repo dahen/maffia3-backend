@@ -507,3 +507,10 @@ bygge, GitHub Actions, GHCR, nätväg från container och backupåterställning 
 verifieras på mini. Ingen riktig release är publicerad och ingen deploy utförd.
 Isolerad webbläsarpreview (minnes-DB/falsk host) verifierade versionsindikering,
 bekräftelse och uppdateringsjobb; rör inga riktiga partier eller containrar.
+
+## 2026-11-17: Omladdning efter uppdatering
+
+Mini kör v0.1.0 enligt installationsrapporten. GM:s skärmbild bekräftade
+versionsstatus och visade att omladdningsknappen låg kvar efter omladdning.
+Från v0.1.1 byggs releaseversionen in i frontend. Efter ett slutfört jobb
+visas knappen bara om webbläsarens version skiljer sig från serverns.
