@@ -2,7 +2,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import type { Store } from './db.ts';
 import { Problem } from './auth.ts';
 import { PHASES, targetsPlayer } from './contracts.ts';
-import type { User, GameState, GameView, GameSummary, Role, Power, Round, Phase, Action, RoleView, TimelineEntry, Theme, Death } from './contracts.ts';
+import type { User, GameState, GameView, GameSummary, Role, Power, Round, Phase, Action, RoleView, TimelineEntry, Theme, Death, Room } from './contracts.ts';
 import { phaseReadiness, type PhaseGuard } from './readiness.ts';
 
 export class PhaseChangeBlocked extends Problem {
@@ -12,8 +12,15 @@ export class PhaseChangeBlocked extends Problem {
 
 interface GameRow { id: string; name: string; mode: 'test' | 'live'; current_revision: number; forward_revision: number | null; automation_paused: number }
 interface RevisionRow { id: number; parent_id: number | null; state_json: string; label: string; round: number; phase: Phase; created_at: string }
+function ensureChronicleRoom(state: GameState) {
+  if (!state.rooms.some(room => room.kind === 'chronicle')) {
+    state.rooms.push({ id: 'chronicle', name: 'Krönika', kind: 'chronicle', roleIds: [] });
+  }
+}
+
 export function parseState(json: string):GameState {
   const state=JSON.parse(json) as GameState;
+  ensureChronicleRoom(state);
   for (const role of state.roles) for (const power of role.powers) if ((power.type as string) === 'Name') {
     // Legacy snapshots remain immutable. Only the known demo hunting ability is promoted to kill.
     power.type = power.groupId === 'predators' && power.name === 'Nattens jakt' ? 'player-kill' : 'player-other';
@@ -56,6 +63,7 @@ export function listGames(store: Store, user: User): GameSummary[] {
   });
 }
 export function appendRevision(store: Store, gameId: string, parent: number | null, user: User, state: GameState, label: string) {
+  ensureChronicleRoom(state);
   const round = latestRound(state);
   const result = store.run('INSERT INTO revisions(game_id,parent_id,label,actor_id,state_json,round,phase,created_at) VALUES(?,?,?,?,?,?,?,?)', gameId, parent, label, user.id, JSON.stringify(state), round.number, round.phase, new Date().toISOString());
   const id = Number(result.lastInsertRowid);
@@ -217,7 +225,18 @@ export function navigate(store: Store, id: string, user: User, direction: 'back'
 export function jumpToRevision(store: Store, id: string, user: User, target: number) {
   gm(user); return store.transaction(() => { const { game } = loadGame(store, id); if (game.mode !== 'test') throw new Problem(403, 'Återställning finns bara i testpartier.'); if (!store.one('SELECT id FROM revisions WHERE id=? AND game_id=?', target, id)) throw new Problem(404, 'Historiksteget finns inte.'); store.run('UPDATE games SET current_revision=?,forward_revision=NULL,automation_paused=1 WHERE id=?', target, id); return target; });
 }
-function roomAccess(state: GameState, roomId: string, user: User) { const room = state.rooms.find(r => r.id === roomId); if (!room) throw new Problem(404, 'Chatten finns inte.'); const role = state.roles.find(r => r.userId === user.id); if (!user.admin && (!role || !room.roleIds.includes(role.id))) throw new Problem(403, 'Du har inte tillgång till den här chatten.'); return room; }
+function canAccessRoom(room: Room, user: User, roles: Role[]) {
+  if (user.admin) return true;
+  return roles.some(role => role.userId === user.id &&
+    (room.kind === 'chronicle' ? !role.alive : room.roleIds.includes(role.id)));
+}
+
+function roomAccess(state: GameState, roomId: string, user: User) {
+  const room = state.rooms.find(r => r.id === roomId);
+  if (!room) throw new Problem(404, 'Chatten finns inte.');
+  if (!canAccessRoom(room, user, state.roles)) throw new Problem(403, 'Du har inte tillgång till den här chatten.');
+  return room;
+}
 export function readMessages(store: Store, id: string, user: User, roomId: string) {
   const { state } = loadGame(store, id); authorize(user, state); roomAccess(state, roomId, user); return state.messages.filter(m => m.roomId === roomId);
 }
@@ -226,10 +245,10 @@ export function postMessage(store: Store, id: string, user: User, roomId: string
     const { game, state } = loadGame(store, id); authorize(user, state); const room = roomAccess(state, roomId, user);
     const existing = state.messages.find(m => m.id === clientId);
     if (existing) { if (existing.senderId !== user.id || existing.roomId !== roomId || existing.body !== body.trim()) throw new Problem(409, 'Meddelande-ID används redan.'); return existing; }
-    if (!user.admin && latestRound(state).phase === 3 && room.kind !== 'gm') throw new Problem(409, 'Gruppchattar är stängda under morgonen. Du kan skriva till GM.');
+    if (!user.admin && latestRound(state).phase === 3 && room.kind === 'group') throw new Problem(409, 'Gruppchattar är stängda under morgonen. Du kan skriva till GM.');
     const message = { id: clientId, roomId, body: body.trim(), senderId: user.id, senderName: user.admin ? `GM · ${user.name}` : user.name, admin: user.admin, round: latestRound(state).number, time: new Date().toISOString() };
     if (!message.body) throw new Problem(400, 'Skriv ett meddelande.');
-    state.messages.push(message); appendRevision(store, id, game.current_revision, user, state, 'Chattmeddelande'); return message;
+    state.messages.push(message); appendRevision(store, id, game.current_revision, user, state, room.kind === 'chronicle' ? 'Krönikeinlägg' : 'Chattmeddelande'); return message;
   });
 }
 export function markRead(store: Store, id: string, user: User, roomId: string, messageId: string) {
@@ -254,7 +273,7 @@ export function gameView(store: Store, id: string, user: User, roundNumber?: num
       finished: !role.alive || powers.every(p => !p.enabled || p.type === 'None' || Boolean(p.action?.value)),
       gmFinished: !role.alive || powers.every(p => !p.enabled || !p.gmResponse || (p.type !== 'None' && !p.action?.value) || Boolean(p.action?.response.trim())) };
   });
-  const rooms = state.rooms.filter(room => user.admin || room.roleIds.some(r => visibleRoles.some(role => role.id === r))).map(room => {
+  const rooms = state.rooms.filter(room => canAccessRoom(room, user, visibleRoles)).map(room => {
     const messages = state.messages.filter(m => m.roomId === room.id);
     const read = store.one<{ message_id: string }>('SELECT message_id FROM room_reads WHERE user_id=? AND game_id=? AND room_id=?', user.id, id, room.id);
     const readIndex = messages.findIndex(m => m.id === read?.message_id);

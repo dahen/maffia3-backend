@@ -11,7 +11,7 @@ export interface Countdown { deadline: string; minutes: number }
 export interface DeathSource { actorRoleId: string; actorPlayer: string; actorRole: string; powerId: string; powerName: string; actionKey: string; sourceRevision: number }
 export interface Death { roleId: string; cause: 'night' | 'lynch' | 'day'; reason: string; source: DeathSource | null; clue: string }
 export interface Round { number: number; phase: Phase; notes: string; countdown: Countdown | null; deaths: Death[]; dayOutcome: 'pending' | 'none' | 'deaths'; roles: Record<string, RoundRole>; actions: Record<string, Action> }
-export interface Room { id: string; name: string; kind: 'gm' | 'group'; roleIds: string[] }
+export interface Room { id: string; name: string; kind: 'gm' | 'group' | 'chronicle'; roleIds: string[] }
 export interface Message { id: string; roomId: string; senderId: string; senderName: string; admin: boolean; body: string; round: number; time: string }
 export type Theme = 'jungle' | 'classic';
 export interface GameState { theme: Theme; roles: Role[]; rounds: Round[]; rooms: Room[]; messages: Message[] }

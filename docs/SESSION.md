@@ -518,3 +518,11 @@ visas knappen bara om webbläsarens version skiljer sig från serverns.
 Uppdateringen till v0.1.1 är verifierad via GM-vyn på mini. Användaren vill
 återanvända GitHub Releases, uppdateringsknappen och LaunchAgent för andra appar
 på mini. Mönstret finns i [deploy/MINI-PATTERN.md](../deploy/MINI-PATTERN.md).
+
+## Krönika
+
+Krönika är ett gemensamt chattrum för GM och alla döda spelare i partiet.
+Rummet är skrivbart i alla faser, särskilt under Möte för dokumentation av
+dagens diskussion. Aktuell livsstatus styr åtkomsten även i befintliga partier.
+Inläggen sparas i partihistoriken och kan filtreras fram som Krönika i GM:s
+händelselogg. Loggen kan senare användas som underlag för en resumé.

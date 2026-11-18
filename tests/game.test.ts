@@ -235,6 +235,46 @@ test('chatt: medlemskap, oläst, omsändning och beständiga meddelanden',()=>{
   }finally{f.store.close();}
 });
 
+test('Krönika fungerar i alla faser, skyddas av aktuell livsstatus och sparas i partiloggen', () => {
+  const f = fixture();
+  try {
+    const [first, second, living] = [f.player(0), f.player(1), f.player(2)];
+    const room = gameView(f.store, f.id, f.gm).rooms.find(room => room.kind === 'chronicle')!;
+    const { state } = loadGame(f.store, f.id);
+    state.rooms = state.rooms.filter(room => room.kind !== 'chronicle');
+    assert.equal(parseState(JSON.stringify(state)).rooms.find(room => room.kind === 'chronicle')?.id, room.id);
+
+    const gmPost = postMessage(f.store, f.id, f.gm, room.id, 'GM börjar föra krönika.', randomUUID());
+    const denied = { status: 403 };
+    assert.throws(() => readMessages(f.store, f.id, first, room.id), denied);
+    setRoleFlags(f.store, f.id, f.gm, f.state.roles[0]!.id, { alive: false });
+    assert.equal(gameView(f.store, f.id, first).rooms.find(room => room.id === 'chronicle')?.unread, 1);
+    assert.ok(!gameView(f.store, f.id, living).rooms.some(room => room.id === 'chronicle'));
+    assert.throws(() => readMessages(f.store, f.id, living, room.id), denied);
+    assert.throws(() => postMessage(f.store, f.id, living, room.id, 'Otillåtet', randomUUID()), denied);
+    assert.throws(() => markRead(f.store, f.id, living, room.id, gmPost.id), denied);
+    markRead(f.store, f.id, first, room.id, gmPost.id);
+    assert.equal(gameView(f.store, f.id, first).rooms.find(room => room.id === 'chronicle')?.unread, 0);
+
+    for (const phase of [0, 1, 2, 3] as const) {
+      if (phase !== 0) setPhase(f.store, f.id, f.gm, phase);
+      postMessage(f.store, f.id, first, room.id, `Observation i fas ${phase}`, randomUUID());
+    }
+    advanceRound(f.store, f.id, f.gm);
+    setRoleFlags(f.store, f.id, f.gm, f.state.roles[1]!.id, { alive: false });
+    assert.equal(readMessages(f.store, f.id, second, room.id).length, 5);
+    const posts = gameLog(f.store, f.id, f.gm).filter(entry => entry.kind === 'chronicle');
+    assert.equal(posts.length, 5);
+    assert.deepEqual(posts.slice(1).map(post => post.phase), [0, 1, 2, 3]);
+    assert.ok(posts.slice(1).every(post => post.actor === first.name && post.round === 1 && post.activeBranch && post.time));
+    assert.ok(posts[1]!.details.some(detail => detail.includes('Krönika: Observation i fas 0')));
+    assert.throws(() => gameLog(f.store, f.id, second), denied);
+    setRoleFlags(f.store, f.id, f.gm, f.state.roles[0]!.id, { alive: true });
+    assert.throws(() => readMessages(f.store, f.id, first, room.id), denied);
+    assert.equal(readMessages(f.store, f.id, second, room.id).length, 5);
+  } finally { f.store.close(); }
+});
+
 test('manuella broadcasts väljer rätt mottagare och nedräkningen sparar en deadline utan automatiska utskick eller fasbyten',()=>{
   const f=fixture();try{
     setPhase(f.store,f.id,f.gm,1);const role=f.state.roles[2]!;submitAction(f.store,f.id,f.player(2),role.id,role.powers[0]!.id,'Ingen',null);

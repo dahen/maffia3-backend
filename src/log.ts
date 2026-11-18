@@ -2,7 +2,7 @@ import type { Store } from './db.ts';
 import type { GameState, Phase, User } from './contracts.ts';
 import { Problem } from './auth.ts';
 import { loadGame, latestRound, actionKey, parseState } from './game.ts';
-export interface LogEntry { id:number; parentId:number|null; time:string; round:number; phase:Phase; actor:string; label:string; kind:'action'|'response'|'chat'|'state'|'notes'; details:string[]; activeBranch:boolean }
+export interface LogEntry { id:number; parentId:number|null; time:string; round:number; phase:Phase; actor:string; label:string; kind:'action'|'response'|'chat'|'chronicle'|'state'|'notes'; details:string[]; activeBranch:boolean }
 export function gameLog(store: Store, id: string, user: User): LogEntry[] {
   if (!user.admin) throw new Problem(403,'Endast spelledningen får läsa hela partiloggen.');
   const {game} = loadGame(store,id);
@@ -42,7 +42,11 @@ export function gameLog(store: Store, id: string, user: User): LogEntry[] {
     if(round.dayOutcome==='none'&&oldRound?.dayOutcome!=='none')details.push('GM har bekräftat att ingen dog under dagen.');
     const oldMessageIds = new Set(before?.messages.map(m => m.id) ?? []);
     const messages = state.messages.filter(m => !oldMessageIds.has(m.id));
-    if (messages.length) { if (before) kind='chat'; for (const m of messages) { const room=state.rooms.find(r=>r.id===m.roomId); details.push(`${m.senderName} → ${room?.kind === 'gm' ? 'GM ↔ ' : ''}${room?.name ?? 'chatt'}: ${m.body}`); } }
+    for (const message of messages) {
+      const room = state.rooms.find(r => r.id === message.roomId);
+      if (before) kind = room?.kind === 'chronicle' ? 'chronicle' : 'chat';
+      details.push(`${message.senderName} → ${room?.kind === 'gm' ? 'GM ↔ ' : ''}${room?.name ?? 'chatt'}: ${message.body}`);
+    }
     if (!details.length) details.push(revision.label);
     return {id:revision.id,parentId:revision.parent_id,time:revision.created_at,round:revision.round,phase:revision.phase,actor:revision.actor,label:revision.label,kind,details,activeBranch:active.has(revision.id)};
   });
